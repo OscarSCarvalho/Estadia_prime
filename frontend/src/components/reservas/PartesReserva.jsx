@@ -1,0 +1,81 @@
+import Icone from '../Icone.jsx';
+import ErroCarregamento from '../ErroCarregamento.jsx';
+import { STATUS_RESERVA, ROTULO_TIPO_SERVICO, descreverQuantidade } from '../../utils/perfis.js';
+import { formatarDataComAno, formatarDiaDaSemana, formatarMoeda } from '../../utils/formatacao.js';
+
+export function SeloReserva({ status }) {
+  const { rotulo, classes } = STATUS_RESERVA[status] ?? STATUS_RESERVA.cancelada;
+  return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${classes}`}>{rotulo}</span>;
+}
+
+export function PeriodoReserva({ reserva }) {
+  return (
+    <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-grafite">
+      <span className="inline-flex items-center gap-1.5">
+        <Icone nome="calendario" tamanho={16} />
+        {formatarDataComAno(reserva.data_checkin)} – {formatarDataComAno(reserva.data_checkout)}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <Icone nome="hospedes" tamanho={16} />
+        {reserva.num_hospedes} {reserva.num_hospedes === 1 ? 'hóspede' : 'hóspedes'}
+      </span>
+    </p>
+  );
+}
+
+// Serviços contratados na reserva, com dia, prestador e valor
+export function ItensReserva({ itens }) {
+  if (itens.length === 0) return <p className="text-sm text-grafite">Sem serviços premium.</p>;
+  return (
+    <ul className="space-y-1.5 text-sm">
+      {itens.map((item) => (
+        <li key={item.id} className="flex justify-between gap-3">
+          <span className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Icone nome={item.tipo_servico} tamanho={15} className="text-ouro-escuro" />
+              {ROTULO_TIPO_SERVICO[item.tipo_servico]}
+            </span>
+            <span className="text-grafite">
+              {' '}
+              · {item.prestador} · {formatarDiaDaSemana(item.data_servico)} · {descreverQuantidade(item.quantidade, item.unidade_preco)}
+            </span>
+          </span>
+          <span className="shrink-0">{formatarMoeda(item.subtotal)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Carregando / erro / vazio / lista: o mesmo esqueleto nas três telas de reservas
+export function ConteudoLista({ carregando, erro, recarregar, vazio, tituloVazio, textoVazio, children }) {
+  if (carregando) {
+    return (
+      <p role="status" className="py-12 text-center text-grafite">
+        Carregando…
+      </p>
+    );
+  }
+  if (erro) return <ErroCarregamento erro={erro} aoTentarDeNovo={recarregar} />;
+  if (vazio) {
+    return (
+      <div className="rounded-2xl border border-dashed border-linha px-6 py-16 text-center">
+        <p className="font-titulo text-3xl font-semibold">{tituloVazio}</p>
+        <p className="mt-2 text-grafite">{textoVazio}</p>
+      </div>
+    );
+  }
+  return children;
+}
+
+export function CabecalhoPagina({ rotulo, titulo, children }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-ouro-escuro">{rotulo}</p>
+        <h1 className="mt-2 font-titulo text-5xl font-semibold">{titulo}</h1>
+      </div>
+      {children}
+    </div>
+  );
+}

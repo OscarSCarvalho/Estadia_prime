@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --font-titulo: "Cormorant Garamond", Georgia, serif;
+  --font-texto: "Inter", system-ui, sans-serif;
+
+  --color-marfim: #faf7f2;
+  --color-areia: #f1ece3;
+  --color-linha: #e3dccf;
+  --color-tinta: #1c1b1f;
+  --color-grafite: #57535c;
+  --color-ouro: #c9a66b;
+  --color-ouro-escuro: #7a5c2e;
+  --color-erro: #9b2c2c;
+  --color-erro-fundo: #fbeaea;
+}
+
+@layer base {
+  body {
+    @apply bg-marfim text-tinta font-texto antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ouro-escuro;
+  }
+}

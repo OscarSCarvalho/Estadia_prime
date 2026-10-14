@@ -1,0 +1,9 @@
+node_modules/
+.env
+backend/data/
+backend/uploads/
+frontend/dist/
+estadia.db
+estadia.db-shm
+estadia.db-wal
+*.log
