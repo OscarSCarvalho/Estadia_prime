@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import Icone from '../components/Icone.jsx';
 import ErroCarregamento from '../components/ErroCarregamento.jsx';
+import EstadoVazio from '../components/EstadoVazio.jsx';
+import { ImovelCarregando } from '../components/Esqueletos.jsx';
 import Avaliacao from '../components/explorar/Avaliacao.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { useDados } from '../hooks/useDados.js';
+import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { listarServicosDaEstadia, obterImovel, verificarDisponibilidade } from '../services/catalogo.js';
 import { chaveCarrinho, lerCarrinho, salvarCarrinho } from '../services/carrinhoSalvo.js';
 import { criarReserva } from '../services/reservas.js';
@@ -33,7 +36,7 @@ function rotuloQuantidade(unidadePreco) {
 
 function SeletorQuantidade({ valor, aoMudar, rotulo }) {
   const botao =
-    'grid h-8 w-8 place-items-center rounded-full border border-grafite/40 text-grafite transition-colors hover:border-tinta hover:text-tinta disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-grafite/40';
+    'grid h-8 w-8 place-items-center rounded-full border border-borda text-grafite transition-colors hover:border-tinta hover:text-tinta disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-borda';
 
   return (
     <div role="group" aria-label={rotulo} className="inline-flex items-center gap-3">
@@ -54,14 +57,14 @@ function SeletorQuantidade({ valor, aoMudar, rotulo }) {
   );
 }
 
-function Bloqueio({ titulo, texto, link, rotuloLink }) {
+function Bloqueio({ icone = 'calendario', titulo, texto, link, rotuloLink }) {
   return (
-    <div className="mx-auto max-w-xl px-4 py-24 text-center">
-      <h1 className="font-titulo text-3xl font-semibold">{titulo}</h1>
-      {texto && <p className="mt-3 text-grafite">{texto}</p>}
-      <Link to={link} className="mt-6 inline-block font-medium text-ouro-escuro underline underline-offset-4">
-        {rotuloLink}
-      </Link>
+    <div className="mx-auto max-w-xl px-4 py-24">
+      <EstadoVazio TagTitulo="h1" icone={icone} titulo={titulo} texto={texto}>
+        <Link to={link} className="rounded-full bg-tinta px-6 py-3 text-sm font-medium text-marfim hover:bg-grafite">
+          {rotuloLink}
+        </Link>
+      </EstadoVazio>
     </div>
   );
 }
@@ -119,7 +122,7 @@ function ServicoParaAdicionar({ servico, dias, aoAdicionar }) {
                 setDia(e.target.value);
                 setAdicionado(false);
               }}
-              className="w-full rounded-lg border border-grafite/40 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm"
             >
               {dias.map((opcao) => {
                 const ocupado = servico.dias_indisponiveis.includes(opcao);
@@ -393,8 +396,8 @@ function MontagemCarrinho({ chave, imovel, servicos: servicosCarregados, checkin
   return (
     <div className="bg-white">
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:pb-20">
-        <Link to={linkImovel} className="text-sm font-medium text-grafite hover:text-tinta">
-          ← Voltar ao imóvel
+        <Link to={linkImovel} className="inline-flex items-center gap-1 text-sm font-medium text-grafite hover:text-tinta">
+          <Icone nome="anterior" tamanho={16} /> Voltar ao imóvel
         </Link>
         <h1 className="mt-4 font-titulo text-4xl font-semibold sm:text-5xl">Monte sua estadia</h1>
         <p className="mt-2 text-grafite">Adicione serviços premium e confira o total antes de pagar.</p>
@@ -463,6 +466,7 @@ export default function Carrinho() {
   const { id } = useParams();
   const [parametros] = useSearchParams();
   const { usuario } = useAuth();
+  useTituloPagina('Monte sua estadia');
 
   const checkin = parametros.get('checkin') ?? '';
   const checkout = parametros.get('checkout') ?? '';
@@ -478,13 +482,7 @@ export default function Carrinho() {
     return { detalhe, disponivel, servicos };
   });
 
-  if (carregando) {
-    return (
-      <p role="status" className="py-24 text-center text-grafite">
-        Carregando…
-      </p>
-    );
-  }
+  if (carregando) return <ImovelCarregando />;
 
   if (erro) {
     return (
@@ -495,7 +493,7 @@ export default function Carrinho() {
   }
 
   if (!dados?.detalhe) {
-    return <Bloqueio titulo="Imóvel não encontrado" link="/explorar" rotuloLink="Voltar para a busca" />;
+    return <Bloqueio icone="casa" titulo="Imóvel não encontrado" link="/explorar" rotuloLink="Voltar para a busca" />;
   }
 
   const { imovel } = dados.detalhe;
@@ -503,6 +501,7 @@ export default function Carrinho() {
   if (usuario.tipo !== 'hospede') {
     return (
       <Bloqueio
+        icone="hospedes"
         titulo="Use uma conta de hóspede"
         texto="Reservas são feitas com uma conta de hóspede. Saia e entre com ela para montar o carrinho."
         link={linkImovel}

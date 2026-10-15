@@ -1,4 +1,5 @@
 import { Link, Navigate, useLocation } from 'react-router';
+import { CarregandoSimples } from './Esqueletos.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { PERFIS } from '../utils/perfis.js';
 
@@ -7,13 +8,7 @@ export default function RotaProtegida({ perfil, children }) {
   const { usuario, carregando } = useAuth();
   const localizacao = useLocation();
 
-  if (carregando) {
-    return (
-      <p role="status" className="py-24 text-center text-grafite">
-        Carregando…
-      </p>
-    );
-  }
+  if (carregando) return <CarregandoSimples />;
 
   if (!usuario) {
     // A busca (?checkin=...) volta junto: quem entra pelo carrinho não perde as datas escolhidas

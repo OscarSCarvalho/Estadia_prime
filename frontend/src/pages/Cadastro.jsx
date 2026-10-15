@@ -6,6 +6,7 @@ import CampoSenha from '../components/CampoSenha.jsx';
 import Botao from '../components/Botao.jsx';
 import Alerta from '../components/Alerta.jsx';
 import { useAuth } from '../hooks/useAuth.js';
+import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { PERFIS, ORDEM_PERFIS } from '../utils/perfis.js';
 
 const FORMULARIO_VAZIO = { nome: '', email: '', telefone: '', senha: '', tipo: 'hospede' };
@@ -53,6 +54,7 @@ export default function Cadastro() {
   const navegar = useNavigate();
   const voltarPara = useLocation().state?.voltarPara;
   const destinoAposCadastro = voltarPara ?? '/minha-conta';
+  useTituloPagina('Criar conta');
 
   const [formulario, setFormulario] = useState(() => ({
     ...FORMULARIO_VAZIO,

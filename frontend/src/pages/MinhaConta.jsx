@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../hooks/useAuth.js';
+import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { PERFIS } from '../utils/perfis.js';
 import { formatarDataCadastro, formatarTelefone } from '../utils/formatacao.js';
 
@@ -40,6 +41,7 @@ function Dado({ rotulo, valor }) {
 export default function MinhaConta() {
   const { usuario, sair } = useAuth();
   const navegar = useNavigate();
+  useTituloPagina('Minha conta');
 
   async function aoSair() {
     await sair();
@@ -49,7 +51,7 @@ export default function MinhaConta() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
       <p className="text-sm font-medium uppercase tracking-[0.2em] text-ouro-escuro">{PERFIS[usuario.tipo].titulo}</p>
-      <h1 className="mt-2 font-titulo text-5xl font-semibold">Olá, {usuario.nome.split(' ')[0]}</h1>
+      <h1 className="mt-2 font-titulo text-4xl font-semibold sm:text-5xl">Olá, {usuario.nome.split(' ')[0]}</h1>
       <p className="mt-3 text-grafite">{PROXIMOS_PASSOS[usuario.tipo].texto}</p>
       <div className="mt-6 flex flex-wrap gap-3">
         {PROXIMOS_PASSOS[usuario.tipo].links.map(({ para, rotulo }, posicao) => (

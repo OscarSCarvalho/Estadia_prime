@@ -1,7 +1,7 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import Icone from '../Icone.jsx';
 import { TIPOS_SERVICO } from '../../utils/perfis.js';
-import { hojeIso } from '../../utils/formatacao.js';
+import { formatarDataCurta, hojeIso } from '../../utils/formatacao.js';
 
 function Segmento({ rotulo, children, className = '' }) {
   const id = useId();
@@ -43,7 +43,20 @@ export function BarraBuscaImoveis({ filtros, cidades, aoBuscar }) {
   const [checkin, setCheckin] = useState(filtros.checkin ?? '');
   const [checkout, setCheckout] = useState(filtros.checkout ?? '');
   const [hospedes, setHospedes] = useState(filtros.hospedes ?? '');
+  // No celular a barra começa fechada numa pílula só, para os imóveis aparecerem logo
+  const [expandida, setExpandida] = useState(false);
+  const formulario = useRef(null);
   const hoje = hojeIso();
+
+  function expandir() {
+    setExpandida(true);
+    requestAnimationFrame(() => formulario.current.querySelector('select, input').focus());
+  }
+
+  const resumoDatas = filtros.checkin && filtros.checkout
+    ? `${formatarDataCurta(filtros.checkin)} – ${formatarDataCurta(filtros.checkout)}`
+    : 'Qualquer data';
+  const resumoHospedes = filtros.hospedes ? `${filtros.hospedes} ${filtros.hospedes === 1 ? 'hóspede' : 'hóspedes'}` : 'Hóspedes';
 
   function aoEnviar(evento) {
     evento.preventDefault();
@@ -56,53 +69,71 @@ export function BarraBuscaImoveis({ filtros, cidades, aoBuscar }) {
   }
 
   return (
-    <form role="search" onSubmit={aoEnviar} className={estiloBarra}>
-      <Segmento rotulo="Onde" className="md:flex-[1.4]">
-        {(id) => (
-          <select id={id} value={cidade} onChange={(e) => setCidade(e.target.value)} className={estiloCampo}>
-            <option value="">Qualquer destino</option>
-            {cidades.map(({ cidade: nome, estado }) => (
-              <option key={nome} value={nome}>
-                {estado ? `${nome}, ${estado}` : nome}
-              </option>
-            ))}
-          </select>
-        )}
-      </Segmento>
-      <Divisor />
-      <Segmento rotulo="Check-in">
-        {(id) => (
-          <input id={id} type="date" min={hoje} value={checkin} onChange={(e) => aoMudarCheckin(e.target.value)} className={estiloCampo} />
-        )}
-      </Segmento>
-      <Divisor />
-      <Segmento rotulo="Check-out">
-        {(id) => (
-          <input
-            id={id}
-            type="date"
-            min={checkin || hoje}
-            value={checkout}
-            onChange={(e) => setCheckout(e.target.value)}
-            className={estiloCampo}
-          />
-        )}
-      </Segmento>
-      <Divisor />
-      <Segmento rotulo="Hóspedes">
-        {(id) => (
-          <select id={id} value={hospedes} onChange={(e) => setHospedes(e.target.value)} className={estiloCampo}>
-            <option value="">Quantos?</option>
-            {Array.from({ length: 16 }, (_, i) => i + 1).map((quantidade) => (
-              <option key={quantidade} value={quantidade}>
-                {quantidade} {quantidade === 1 ? 'hóspede' : 'hóspedes'}
-              </option>
-            ))}
-          </select>
-        )}
-      </Segmento>
-      <BotaoBuscar />
-    </form>
+    <>
+      {!expandida && (
+        <button
+          type="button"
+          onClick={expandir}
+          className="mx-auto flex w-full max-w-md items-center gap-3 rounded-full border border-linha bg-white px-4 py-3 text-left shadow-[0_6px_20px_rgba(28,27,31,0.08)] md:hidden"
+        >
+          <Icone nome="busca" tamanho={20} className="shrink-0" />
+          <span className="sr-only">Mudar a busca:</span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold">{filtros.cidade || 'Para onde?'}</span>
+            <span className="block truncate text-xs text-grafite">
+              {resumoDatas} · {resumoHospedes}
+            </span>
+          </span>
+        </button>
+      )}
+      <form ref={formulario} role="search" onSubmit={aoEnviar} className={`${estiloBarra} ${expandida ? '' : 'max-md:hidden'}`}>
+        <Segmento rotulo="Onde" className="md:flex-[1.4]">
+          {(id) => (
+            <select id={id} value={cidade} onChange={(e) => setCidade(e.target.value)} className={estiloCampo}>
+              <option value="">Qualquer destino</option>
+              {cidades.map(({ cidade: nome, estado }) => (
+                <option key={nome} value={nome}>
+                  {estado ? `${nome}, ${estado}` : nome}
+                </option>
+              ))}
+            </select>
+          )}
+        </Segmento>
+        <Divisor />
+        <Segmento rotulo="Check-in">
+          {(id) => (
+            <input id={id} type="date" min={hoje} value={checkin} onChange={(e) => aoMudarCheckin(e.target.value)} className={estiloCampo} />
+          )}
+        </Segmento>
+        <Divisor />
+        <Segmento rotulo="Check-out">
+          {(id) => (
+            <input
+              id={id}
+              type="date"
+              min={checkin || hoje}
+              value={checkout}
+              onChange={(e) => setCheckout(e.target.value)}
+              className={estiloCampo}
+            />
+          )}
+        </Segmento>
+        <Divisor />
+        <Segmento rotulo="Hóspedes">
+          {(id) => (
+            <select id={id} value={hospedes} onChange={(e) => setHospedes(e.target.value)} className={estiloCampo}>
+              <option value="">Quantos?</option>
+              {Array.from({ length: 16 }, (_, i) => i + 1).map((quantidade) => (
+                <option key={quantidade} value={quantidade}>
+                  {quantidade} {quantidade === 1 ? 'hóspede' : 'hóspedes'}
+                </option>
+              ))}
+            </select>
+          )}
+        </Segmento>
+        <BotaoBuscar />
+      </form>
+    </>
   );
 }
 

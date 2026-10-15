@@ -1,5 +1,7 @@
 import Icone from '../Icone.jsx';
 import ErroCarregamento from '../ErroCarregamento.jsx';
+import EstadoVazio from '../EstadoVazio.jsx';
+import { ListaCarregando } from '../Esqueletos.jsx';
 import { STATUS_RESERVA, ROTULO_TIPO_SERVICO, descreverQuantidade } from '../../utils/perfis.js';
 import { formatarDataComAno, formatarDiaDaSemana, formatarMoeda } from '../../utils/formatacao.js';
 
@@ -47,22 +49,16 @@ export function ItensReserva({ itens }) {
   );
 }
 
-// Carregando / erro / vazio / lista: o mesmo esqueleto nas três telas de reservas
-export function ConteudoLista({ carregando, erro, recarregar, vazio, tituloVazio, textoVazio, children }) {
-  if (carregando) {
-    return (
-      <p role="status" className="py-12 text-center text-grafite">
-        Carregando…
-      </p>
-    );
-  }
+// Carregando / erro / vazio / lista: o mesmo esqueleto nas três telas de reservas.
+// `acaoVazio`: botão ou link opcional dentro da caixa de lista vazia
+export function ConteudoLista({ carregando, erro, recarregar, vazio, tituloVazio, textoVazio, acaoVazio, children }) {
+  if (carregando) return <ListaCarregando />;
   if (erro) return <ErroCarregamento erro={erro} aoTentarDeNovo={recarregar} />;
   if (vazio) {
     return (
-      <div className="rounded-2xl border border-dashed border-linha px-6 py-16 text-center">
-        <p className="font-titulo text-3xl font-semibold">{tituloVazio}</p>
-        <p className="mt-2 text-grafite">{textoVazio}</p>
-      </div>
+      <EstadoVazio icone="calendario" titulo={tituloVazio} texto={textoVazio}>
+        {acaoVazio}
+      </EstadoVazio>
     );
   }
   return children;
@@ -73,7 +69,7 @@ export function CabecalhoPagina({ rotulo, titulo, children }) {
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-ouro-escuro">{rotulo}</p>
-        <h1 className="mt-2 font-titulo text-5xl font-semibold">{titulo}</h1>
+        <h1 className="mt-2 font-titulo text-4xl font-semibold sm:text-5xl">{titulo}</h1>
       </div>
       {children}
     </div>

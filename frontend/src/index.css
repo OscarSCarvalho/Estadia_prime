@@ -1,12 +1,15 @@
 @import "tailwindcss";
 
 @theme {
+  --font-logo: "Cinzel", "Cormorant Garamond", Georgia, serif;
   --font-titulo: "Cormorant Garamond", Georgia, serif;
   --font-texto: "Inter", system-ui, sans-serif;
 
   --color-marfim: #faf7f2;
   --color-areia: #f1ece3;
   --color-linha: #e3dccf;
+  /* Contorno de campos e controles: contraste mínimo de 3:1 com o fundo (WCAG 1.4.11) */
+  --color-borda: #8c8579;
   --color-tinta: #1c1b1f;
   --color-grafite: #57535c;
   --color-ouro: #c9a66b;
@@ -22,5 +25,17 @@
 
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ouro-escuro;
+  }
+
+  /* Quem pediu menos movimento no sistema não vê animações nem rolagem suave */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

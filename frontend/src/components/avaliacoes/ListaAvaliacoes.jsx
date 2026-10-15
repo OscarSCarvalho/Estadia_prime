@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Icone from '../Icone.jsx';
 import { Estrelas } from './Estrelas.jsx';
+import { CarregandoSimples } from '../Esqueletos.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { listarAvaliacoes } from '../../services/avaliacoes.js';
 import { formatarMesAno, formatarNota } from '../../utils/formatacao.js';
@@ -36,13 +37,7 @@ export default function ListaAvaliacoes({ alvo, textoVazio = 'Ainda sem avaliaç
   const [carregandoMais, setCarregandoMais] = useState(false);
   const [erroMais, setErroMais] = useState('');
 
-  if (carregando) {
-    return (
-      <p role="status" className="py-6 text-grafite">
-        Carregando avaliações…
-      </p>
-    );
-  }
+  if (carregando) return <CarregandoSimples className="py-8" />;
   if (erro) {
     return (
       <p role="alert" className="py-6 text-grafite">

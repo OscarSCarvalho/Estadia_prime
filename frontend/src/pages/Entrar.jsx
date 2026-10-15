@@ -1,7 +1,10 @@
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import Marca from '../components/Marca.jsx';
 import FormularioLogin from '../components/FormularioLogin.jsx';
+import Icone from '../components/Icone.jsx';
+import { CarregandoSimples } from '../components/Esqueletos.jsx';
 import { useAuth } from '../hooks/useAuth.js';
+import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { SERVICOS_PREMIUM } from '../utils/perfis.js';
 
 const DIFERENCIAIS = [
@@ -78,6 +81,7 @@ export default function Entrar() {
   const voltarPara = useLocation().state?.voltarPara;
   const destinoAposLogin = voltarPara ?? '/';
   const motivo = MOTIVOS_LOGIN.find(({ prefixo }) => voltarPara?.startsWith(prefixo)) ?? MOTIVO_PADRAO;
+  useTituloPagina('Entrar');
 
   if (usuario) return <Navigate to={destinoAposLogin} replace />;
 
@@ -86,15 +90,13 @@ export default function Entrar() {
       <PainelApresentacao />
 
       <main id="conteudo" className="flex flex-col px-6 py-8 sm:px-10 lg:py-10">
-        <Link to="/" className="self-start text-sm font-medium text-grafite hover:text-tinta">
-          ← Voltar a explorar os imóveis
+        <Link to="/" className="inline-flex items-center gap-1 self-start text-sm font-medium text-grafite hover:text-tinta">
+          <Icone nome="anterior" tamanho={16} /> Voltar a explorar os imóveis
         </Link>
 
         <div className="mx-auto my-auto w-full max-w-sm py-10">
           {carregando ? (
-            <p role="status" className="text-center text-grafite">
-              Carregando…
-            </p>
+            <CarregandoSimples className="py-10" />
           ) : (
             <>
               <h2 className="font-titulo text-4xl font-semibold">{motivo.titulo}</h2>

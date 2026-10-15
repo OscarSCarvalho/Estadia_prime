@@ -1,7 +1,10 @@
 import { Link } from 'react-router';
 import CardImovel from '../components/explorar/CardImovel.jsx';
 import ErroCarregamento from '../components/ErroCarregamento.jsx';
+import EstadoVazio from '../components/EstadoVazio.jsx';
+import { GradeCarregando } from '../components/Esqueletos.jsx';
 import { useDados } from '../hooks/useDados.js';
+import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { buscarImoveis } from '../services/catalogo.js';
 import { SERVICOS_PREMIUM } from '../utils/perfis.js';
 
@@ -23,8 +26,11 @@ function Destaque() {
         className="absolute inset-0 -z-20 h-full w-full object-cover"
       />
       <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-tinta/90 via-tinta/65 to-tinta/25" />
+      {/* Escurece o alto da foto: o cabeçalho transparente fica legível sobre ela */}
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-tinta/70 to-transparent" />
 
-      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32">
+      {/* O cabeçalho (4,5rem) fica por cima da foto: o texto desce o mesmo tanto */}
+      <div className="mx-auto max-w-7xl px-4 pb-24 pt-[10.5rem] sm:px-6 sm:pb-32 sm:pt-[12.5rem]">
         <p className="text-xs font-medium uppercase tracking-[0.3em] text-ouro sm:text-sm">Hospedagem de alto padrão</p>
         <h1 className="mt-4 max-w-2xl font-titulo text-5xl font-semibold leading-[1.05] sm:text-6xl">
           A casa perfeita. <span className="italic text-ouro">O serviço impecável.</span>
@@ -50,7 +56,7 @@ function Destaque() {
 
 function Imoveis() {
   // A busca já vem ordenada pela nota média (sem avaliação por último)
-  const { dados: imoveis, erro, recarregar } = useDados('destaques', async () => {
+  const { dados: imoveis, erro, carregando, recarregar } = useDados('destaques', async () => {
     const { imoveis: melhores } = await buscarImoveis();
     return melhores.slice(0, QUANTIDADE_DESTAQUES);
   });
@@ -65,11 +71,20 @@ function Imoveis() {
           Ver todos
         </Link>
       </div>
-      {erro && <ErroCarregamento erro={erro} aoTentarDeNovo={recarregar} className="mt-8" />}
-      <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-        {(imoveis ?? []).map((imovel) => (
-          <CardImovel key={imovel.id} imovel={imovel} />
-        ))}
+      <div className="mt-8">
+        {carregando ? (
+          <GradeCarregando quantidade={QUANTIDADE_DESTAQUES} colunas="sm:grid-cols-2 lg:grid-cols-4" />
+        ) : erro ? (
+          <ErroCarregamento erro={erro} aoTentarDeNovo={recarregar} />
+        ) : imoveis.length === 0 ? (
+          <EstadoVazio icone="casa" titulo="Novos imóveis em breve" texto="Estamos selecionando as primeiras casas. Volte em alguns dias." />
+        ) : (
+          <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+            {imoveis.map((imovel) => (
+              <CardImovel key={imovel.id} imovel={imovel} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -118,6 +133,7 @@ function ComoFunciona() {
 }
 
 export default function Inicio() {
+  useTituloPagina('Hospedagem de alto padrão com serviços exclusivos');
   return (
     <>
       <Destaque />

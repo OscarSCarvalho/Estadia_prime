@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Icone from '../Icone.jsx';
+import { useConfirmacao } from '../../hooks/useConfirmacao.jsx';
 import { enviarFotos, removerFoto, reordenarFotos } from '../../services/painel.js';
 
 const LIMITE_FOTOS = 10;
@@ -34,6 +35,7 @@ export default function GerenciadorFotos({ imovelId, fotos, aoMudar }) {
   const [erro, setErro] = useState('');
   const [arrastando, setArrastando] = useState(null);
   const seletor = useRef(null);
+  const [confirmar, janelaConfirmacao] = useConfirmacao();
   const vagas = LIMITE_FOTOS - fotos.length;
 
   // `desfazer`: volta a tela ao estado anterior se a API recusar (ex.: reordenação otimista)
@@ -75,8 +77,16 @@ export default function GerenciadorFotos({ imovelId, fotos, aoMudar }) {
     );
   }
 
-  function remover(foto, posicao) {
-    if (!window.confirm(`Remover a foto ${posicao + 1}? Essa ação não pode ser desfeita.`)) return;
+  async function remover(foto, posicao) {
+    const confirmado = await confirmar({
+      titulo: `Remover a foto ${posicao + 1}?`,
+      texto:
+        posicao === 0
+          ? 'Ela é a capa do anúncio: a próxima foto vira a capa. Essa ação não pode ser desfeita.'
+          : 'Essa ação não pode ser desfeita.',
+      rotuloConfirmar: 'Remover foto',
+    });
+    if (!confirmado) return;
     executar('Removendo a foto…', () => removerFoto(imovelId, foto.id));
   }
 
@@ -202,6 +212,7 @@ export default function GerenciadorFotos({ imovelId, fotos, aoMudar }) {
           ))}
         </ol>
       )}
+      {janelaConfirmacao}
     </section>
   );
 }

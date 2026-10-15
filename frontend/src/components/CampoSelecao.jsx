@@ -16,7 +16,7 @@ export default function CampoSelecao({ rotulo, erro, ajuda, opcoes, ...propsSele
         aria-invalid={erro ? 'true' : undefined}
         aria-describedby={temDescricao ? idDescricao : undefined}
         className={`w-full rounded-lg border bg-white px-4 py-3 text-tinta focus:border-tinta focus:outline-none focus:ring-1 focus:ring-tinta ${
-          erro ? 'border-erro' : 'border-linha'
+          erro ? 'border-erro' : 'border-borda'
         }`}
         {...propsSelect}
       >

@@ -3,16 +3,24 @@ import { Link, useLocation } from 'react-router';
 import Icone from '../../components/Icone.jsx';
 import AvaliarEstadia from '../../components/avaliacoes/AvaliarEstadia.jsx';
 import { CabecalhoPagina, ConteudoLista, ItensReserva, PeriodoReserva, SeloReserva } from '../../components/reservas/PartesReserva.jsx';
+import { useConfirmacao } from '../../hooks/useConfirmacao.jsx';
 import { useDados } from '../../hooks/useDados.js';
+import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { desistirDaReserva, listarMinhasReservas } from '../../services/reservas.js';
 import { formatarHora, formatarMoeda } from '../../utils/formatacao.js';
 
 function AcoesPendente({ reserva, aoMudar }) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
+  const [confirmar, janelaConfirmacao] = useConfirmacao();
 
   async function desistir() {
-    if (!window.confirm('Desistir desta reserva? As datas e os serviços ficam livres para outras pessoas.')) return;
+    const confirmado = await confirmar({
+      titulo: 'Desistir da reserva?',
+      texto: 'As datas e os serviços ficam livres para outras pessoas. Essa ação não pode ser desfeita.',
+      rotuloConfirmar: 'Desistir da reserva',
+    });
+    if (!confirmado) return;
     setEnviando(true);
     setErro('');
     try {
@@ -51,6 +59,7 @@ function AcoesPendente({ reserva, aoMudar }) {
           {erro}
         </p>
       )}
+      {janelaConfirmacao}
     </div>
   );
 }
@@ -117,6 +126,7 @@ function CartaoReserva({ reserva, destacada, aoMudar }) {
 
 export default function MinhasReservas() {
   const reservaCriada = useLocation().state?.reservaCriada;
+  useTituloPagina('Minhas reservas');
   const { dados, erro, carregando, recarregar } = useDados('minhas-reservas', listarMinhasReservas);
   // Reservas alteradas nesta tela (desistência) por cima da lista carregada
   const [alteradas, setAlteradas] = useState({});
@@ -133,7 +143,7 @@ export default function MinhasReservas() {
         </p>
       )}
 
-      <div className="mt-8" aria-live="polite" aria-busy={carregando}>
+      <div className="mt-8">
         <ConteudoLista
           carregando={carregando}
           erro={erro}
@@ -141,6 +151,11 @@ export default function MinhasReservas() {
           vazio={reservas.length === 0}
           tituloVazio="Nenhuma reserva ainda"
           textoVazio="Escolha um imóvel, monte sua estadia com serviços premium e reserve."
+          acaoVazio={
+            <Link to="/explorar" className="rounded-full bg-tinta px-6 py-3 text-sm font-medium text-marfim hover:bg-grafite">
+              Explorar imóveis
+            </Link>
+          }
         >
           <ul className="flex flex-col gap-4">
             {reservas.map((reserva) => (
@@ -153,13 +168,6 @@ export default function MinhasReservas() {
             ))}
           </ul>
         </ConteudoLista>
-        {!carregando && !erro && reservas.length === 0 && (
-          <div className="mt-6 text-center">
-            <Link to="/explorar" className="rounded-full bg-tinta px-6 py-3 font-medium text-marfim hover:bg-grafite">
-              Explorar imóveis
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import Icone from '../../components/Icone.jsx';
 import { CabecalhoPagina, ConteudoLista, SeloReserva } from '../../components/reservas/PartesReserva.jsx';
 import { useDados } from '../../hooks/useDados.js';
+import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { obterAgenda } from '../../services/reservas.js';
 import { ROTULO_TIPO_SERVICO, descreverQuantidade } from '../../utils/perfis.js';
 import { formatarDataComAno, formatarDiaDaSemana, formatarMoeda, formatarTelefone } from '../../utils/formatacao.js';
@@ -51,6 +52,7 @@ function ItemAgenda({ item }) {
 }
 
 export default function Agenda() {
+  useTituloPagina('Minha agenda');
   const { dados: agenda, erro, carregando, recarregar } = useDados('agenda', obterAgenda);
 
   return (
@@ -65,7 +67,7 @@ export default function Agenda() {
         repassado 24 horas depois do check-in.
       </p>
 
-      <div className="mt-8" aria-live="polite" aria-busy={carregando}>
+      <div className="mt-8">
         <ConteudoLista
           carregando={carregando}
           erro={erro}

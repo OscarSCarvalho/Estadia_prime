@@ -15,8 +15,8 @@ export default function CampoAreaTexto({ rotulo, erro, ajuda, ...propsTextarea }
         rows={5}
         aria-invalid={erro ? 'true' : undefined}
         aria-describedby={temDescricao ? idDescricao : undefined}
-        className={`w-full rounded-lg border bg-white px-4 py-3 text-tinta placeholder:text-grafite/60 focus:border-tinta focus:outline-none focus:ring-1 focus:ring-tinta ${
-          erro ? 'border-erro' : 'border-linha'
+        className={`w-full rounded-lg border bg-white px-4 py-3 text-tinta placeholder:text-grafite/85 focus:border-tinta focus:outline-none focus:ring-1 focus:ring-tinta ${
+          erro ? 'border-erro' : 'border-borda'
         }`}
         {...propsTextarea}
       />

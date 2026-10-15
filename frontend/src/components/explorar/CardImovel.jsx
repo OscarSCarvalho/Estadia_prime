@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import CarrosselFotos from './CarrosselFotos.jsx';
 import Avaliacao from './Avaliacao.jsx';
 import Icone from '../Icone.jsx';
@@ -7,28 +7,34 @@ import { calcularNoites, formatarMoeda } from '../../utils/formatacao.js';
 
 const NOTA_DESTAQUE_PRIME = 4.95;
 
-// `periodo` (checkin, checkout, hospedes) segue para a página do imóvel e já preenche a reserva
+// `periodo` (checkin, checkout, hospedes) segue para a página do imóvel e já preenche a reserva.
+// O link do card é o título (o leitor de tela ouve um nome curto); a área de texto inteira é clicável
 export default function CardImovel({ imovel, periodo = {} }) {
+  const { pathname, search } = useLocation();
   const noites = calcularNoites(periodo.checkin, periodo.checkout);
   const parametros = new URLSearchParams(
     Object.entries(periodo).filter(([, valor]) => valor),
   ).toString();
+  const destino = `/imoveis/${imovel.id}${parametros ? `?${parametros}` : ''}`;
+  // Vindo da busca, o "Voltar" da página do imóvel volta para ela com os mesmos filtros
+  const estadoDestino = pathname === '/explorar' ? { busca: pathname + search } : undefined;
 
   return (
-    <Link
-      to={`/imoveis/${imovel.id}${parametros ? `?${parametros}` : ''}`}
-      className="group block rounded-2xl outline-offset-4"
-    >
+    <article className="group rounded-2xl has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-4 has-[a:focus-visible]:outline-ouro-escuro">
       <CarrosselFotos
         fotos={imovel.fotos}
         descricao={`Foto de ${imovel.titulo}`}
         selo={imovel.nota_media >= NOTA_DESTAQUE_PRIME ? 'Destaque Prime' : null}
+        destino={destino}
+        estadoDestino={estadoDestino}
       />
 
-      <div className="mt-3 text-[15px]">
+      <div className="relative mt-3 text-[15px]">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold">
-            {ROTULO_TIPO_IMOVEL[imovel.tipo_imovel]} em {imovel.cidade}, {imovel.estado}
+            <Link to={destino} state={estadoDestino} className="after:absolute after:inset-0 focus-visible:outline-none">
+              {ROTULO_TIPO_IMOVEL[imovel.tipo_imovel]} em {imovel.cidade}, {imovel.estado}
+            </Link>
           </h3>
           <Avaliacao nota={imovel.nota_media} className="shrink-0 text-sm" />
         </div>
@@ -62,6 +68,6 @@ export default function CardImovel({ imovel, periodo = {} }) {
           )}
         </p>
       </div>
-    </Link>
+    </article>
   );
 }

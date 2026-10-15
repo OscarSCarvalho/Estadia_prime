@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import ErroCarregamento from '../../components/ErroCarregamento.jsx';
+import EstadoVazio from '../../components/EstadoVazio.jsx';
+import Icone from '../../components/Icone.jsx';
+import { PainelCarregando } from '../../components/Esqueletos.jsx';
 import FormularioImovel from '../../components/painel/FormularioImovel.jsx';
 import GerenciadorFotos from '../../components/painel/GerenciadorFotos.jsx';
 import SeloStatus from '../../components/painel/SeloStatus.jsx';
 import { useDados } from '../../hooks/useDados.js';
+import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { alterarStatusImovel, editarImovel, obterMeuImovel } from '../../services/painel.js';
 
 // H2.3 + CB06: desativar tira da busca sem apagar; com reserva futura, a API recusa (409)
@@ -53,12 +57,18 @@ function AvisoVisibilidade({ imovel }) {
         ? 'Envie pelo menos uma foto: sem fotos, o imóvel não aparece na busca.'
         : null;
   if (!motivo) return null;
-  return <p className="mt-6 rounded-xl border border-ouro/50 bg-ouro/10 px-4 py-3 text-sm text-ouro-escuro">{motivo}</p>;
+  return (
+    <p className="mt-6 flex items-start gap-2 rounded-xl border border-ouro/50 bg-ouro/10 px-4 py-3 text-sm text-ouro-escuro">
+      <Icone nome="alerta" tamanho={18} className="mt-px shrink-0" />
+      {motivo}
+    </p>
+  );
 }
 
 function PainelImovel({ inicial, recemCadastrado }) {
   const [imovel, setImovel] = useState(inicial);
   const visivel = imovel.status === 'ativo' && imovel.fotos.length > 0;
+  useTituloPagina(imovel.titulo);
 
   async function salvarDados(dados) {
     const salvo = await editarImovel(imovel.id, dados);
@@ -68,12 +78,12 @@ function PainelImovel({ inicial, recemCadastrado }) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-      <Link to="/painel/imoveis" className="text-sm font-medium text-grafite hover:text-tinta">
-        ← Meus imóveis
+      <Link to="/painel/imoveis" className="inline-flex items-center gap-1 text-sm font-medium text-grafite hover:text-tinta">
+        <Icone nome="anterior" tamanho={16} /> Meus imóveis
       </Link>
 
       {recemCadastrado && (
-        <p role="status" className="mt-6 rounded-xl border border-linha bg-white px-4 py-3 text-sm">
+        <p role="status" className="mt-6 rounded-xl border border-ouro/50 bg-ouro/10 px-4 py-3 text-sm">
           <strong>Imóvel cadastrado!</strong> Agora envie as fotos. A primeira será a capa do anúncio.
         </p>
       )}
@@ -124,13 +134,7 @@ export default function EditarImovel() {
   const recemCadastrado = Boolean(useLocation().state?.recemCadastrado);
   const { dados: imovel, erro, carregando, recarregar } = useDados(`meu-imovel|${id}`, () => obterMeuImovel(id));
 
-  if (carregando) {
-    return (
-      <p role="status" className="py-24 text-center text-grafite">
-        Carregando…
-      </p>
-    );
-  }
+  if (carregando) return <PainelCarregando />;
 
   if (erro) {
     return (
@@ -142,11 +146,12 @@ export default function EditarImovel() {
 
   if (!imovel) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="font-titulo text-3xl font-semibold">Imóvel não encontrado</h1>
-        <Link to="/painel/imoveis" className="mt-6 inline-block font-medium text-ouro-escuro underline underline-offset-4">
-          Voltar para meus imóveis
-        </Link>
+      <div className="mx-auto max-w-xl px-4 py-24">
+        <EstadoVazio TagTitulo="h1" icone="casa" titulo="Imóvel não encontrado">
+          <Link to="/painel/imoveis" className="rounded-full bg-tinta px-6 py-3 text-sm font-medium text-marfim hover:bg-grafite">
+            Voltar para meus imóveis
+          </Link>
+        </EstadoVazio>
       </div>
     );
   }

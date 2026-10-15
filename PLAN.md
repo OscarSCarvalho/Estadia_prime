@@ -145,9 +145,11 @@
 | T5.3 | REP/INT | `repositorioAvaliacoes.js` + `routes/avaliacoes.js` | — | ✅ |
 | T5.4 | QA | Cenários "Avaliações" do SPEC | SPEC §5 | ✅ |
 | T5.5 | FE | Formulário de avaliação em "Minhas reservas"; notas e comentários na página do imóvel e no prestador | H7 | ✅ |
-| T5.6 | FE | Acabamento visual de alto padrão, estados vazio/carregando/erro, responsividade e acessibilidade AA | RNF | ⬜ |
+| T5.6 | FE | Acabamento visual de alto padrão, estados vazio/carregando/erro, responsividade e acessibilidade AA | RNF | ✅ |
 
 > **T5.1–T5.5 concluídas em 2026-10-13 (182 testes backend, lint e build ok).** Reserva `confirmada` vira `concluida` no dia seguinte ao checkout (o dia do checkout ainda é da estadia, pode ter serviço — RN05), aplicado em toda leitura de reservas e antes de avaliar. API: `POST /api/reservas/:id/avaliacoes` (hóspede), `GET /api/imoveis/:id/avaliacoes` e `GET /api/servicos/:id/avaliacoes` (públicas, 10 por página, só o primeiro nome do autor). Erros: 422 antes do checkout / prazo encerrado / reserva cancelada / alvo fora da reserva; 409 repetida (garantida também pela UNIQUE do banco). Telas: formulário com estrelas em "Minhas reservas", seção "Avaliações dos hóspedes" na página do imóvel e janela com as avaliações de cada prestador. Como não há pagamento ainda, `npm run db:demonstracao-avaliacoes -- <e-mail do hóspede>` grava estadias passadas e avaliações fictícias para demonstração.
+
+> **T5.6 concluída em 2026-10-14 (lint e build ok, 182 testes backend).** Acessibilidade AA: título próprio em cada aba (`useTituloPagina`), foco levado ao conteúdo e volta ao topo a cada troca de página (no "voltar" a rolagem é mantida), contorno dos campos com contraste 3:1 (cor `borda`), texto de exemplo 5:1, card do imóvel sem botão dentro de link (o link é o título), resultado da busca anunciado só pela contagem, respeito a "reduzir movimento" do sistema. Celular: menu com todos os atalhos do perfil, busca de imóveis recolhida numa pílula, fotos do card deslizam com o dedo. Estados: esqueletos de carregamento (`Esqueletos.jsx`), caixa única de vazio/erro (`EstadoVazio.jsx`). Janelas: peça única `Janela.jsx` (filtros, avaliações, todas as fotos, confirmação); `useConfirmacao` substitui o `window.confirm` (desistir da reserva, remover foto). Página do imóvel: "Mostrar todas as fotos" e "Voltar para a busca" mantendo os filtros. Conferido por print (computador 1366px e celular 360–390px) numa cópia do banco, sem rolagem lateral em nenhuma tela.
 
 ## ETAPA 6 — Validação e Deploy (`VALIDATE.md`)
 

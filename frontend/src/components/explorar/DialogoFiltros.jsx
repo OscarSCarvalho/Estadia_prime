@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Icone from '../Icone.jsx';
+import Janela from '../Janela.jsx';
 import { TIPOS_SERVICO } from '../../utils/perfis.js';
 
 const centavosParaReais = (centavos) => (centavos ? String(centavos / 100) : '');
@@ -27,23 +28,11 @@ function ConteudoFiltros({ filtros, aoAplicar, aoFechar }) {
   }
 
   const campoPreco =
-    'w-full rounded-xl border border-linha px-4 py-3 text-sm outline-none focus:border-tinta focus:ring-1 focus:ring-tinta';
+    'w-full rounded-xl border border-borda px-4 py-3 text-sm outline-none focus:border-tinta focus:ring-1 focus:ring-tinta';
 
   return (
-    <form onSubmit={aplicar} className="flex max-h-[85dvh] flex-col">
-      <header className="relative border-b border-linha px-6 py-4 text-center">
-        <h2 className="font-semibold">Filtros</h2>
-        <button
-          type="button"
-          onClick={aoFechar}
-          aria-label="Fechar filtros"
-          className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-2 hover:bg-areia"
-        >
-          <Icone nome="fechar" tamanho={18} />
-        </button>
-      </header>
-
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+    <form onSubmit={aplicar} className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
         <fieldset>
           <legend className="font-titulo text-2xl font-semibold">Faixa de preço</legend>
           <p className="mt-1 text-sm text-grafite">Valor da diária, em reais.</p>
@@ -124,15 +113,9 @@ export default function DialogoFiltros({ filtros, aoAplicar }) {
         )}
       </button>
 
-      <dialog
-        ref={referencia}
-        onClose={() => setAberto(false)}
-        onClick={(evento) => evento.target === referencia.current && fechar()}
-        aria-label="Filtros"
-        className="m-auto w-[calc(100%-2rem)] max-w-xl rounded-2xl bg-white p-0 text-tinta shadow-2xl backdrop:bg-tinta/50"
-      >
+      <Janela referencia={referencia} titulo="Filtros" rotuloFechar="Fechar filtros" aoFechar={() => setAberto(false)}>
         {aberto && <ConteudoFiltros filtros={filtros} aoAplicar={aoAplicar} aoFechar={fechar} />}
-      </dialog>
+      </Janela>
     </>
   );
 }

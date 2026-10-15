@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { CabecalhoPagina, ConteudoLista, ItensReserva, PeriodoReserva, SeloReserva } from '../../components/reservas/PartesReserva.jsx';
 import { useDados } from '../../hooks/useDados.js';
+import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { listarReservasRecebidas } from '../../services/reservas.js';
 import { formatarMoeda, formatarTelefone } from '../../utils/formatacao.js';
 
@@ -45,6 +46,7 @@ function CartaoReservaRecebida({ reserva }) {
 }
 
 export default function ReservasRecebidas() {
+  useTituloPagina('Reservas recebidas');
   const { dados: reservas, erro, carregando, recarregar } = useDados('reservas-recebidas', listarReservasRecebidas);
 
   return (
@@ -58,7 +60,7 @@ export default function ReservasRecebidas() {
         O valor da hospedagem, já descontada a comissão, é repassado 24 horas depois do check-in.
       </p>
 
-      <div className="mt-8" aria-live="polite" aria-busy={carregando}>
+      <div className="mt-8">
         <ConteudoLista
           carregando={carregando}
           erro={erro}

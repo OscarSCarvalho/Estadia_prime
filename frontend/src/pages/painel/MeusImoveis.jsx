@@ -1,9 +1,12 @@
 import { Link } from 'react-router';
 import ErroCarregamento from '../../components/ErroCarregamento.jsx';
+import EstadoVazio from '../../components/EstadoVazio.jsx';
+import { ListaCarregando } from '../../components/Esqueletos.jsx';
 import Icone from '../../components/Icone.jsx';
 import Avaliacao from '../../components/explorar/Avaliacao.jsx';
 import SeloStatus from '../../components/painel/SeloStatus.jsx';
 import { useDados } from '../../hooks/useDados.js';
+import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { listarMeusImoveis } from '../../services/painel.js';
 import { ROTULO_TIPO_IMOVEL } from '../../utils/perfis.js';
 import { formatarMoeda } from '../../utils/formatacao.js';
@@ -76,6 +79,7 @@ function LinhaImovel({ imovel }) {
 }
 
 export default function MeusImoveis() {
+  useTituloPagina('Meus imóveis');
   const { dados: imoveis, erro, carregando, recarregar } = useDados('meus-imoveis', listarMeusImoveis);
 
   return (
@@ -83,7 +87,7 @@ export default function MeusImoveis() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-ouro-escuro">Painel do anfitrião</p>
-          <h1 className="mt-2 font-titulo text-5xl font-semibold">Meus imóveis</h1>
+          <h1 className="mt-2 font-titulo text-4xl font-semibold sm:text-5xl">Meus imóveis</h1>
         </div>
         <Link
           to="/painel/imoveis/novo"
@@ -93,18 +97,13 @@ export default function MeusImoveis() {
         </Link>
       </div>
 
-      <div className="mt-10" aria-live="polite" aria-busy={carregando}>
+      <div className="mt-10">
         {carregando ? (
-          <p role="status" className="py-12 text-center text-grafite">
-            Carregando…
-          </p>
+          <ListaCarregando />
         ) : erro ? (
           <ErroCarregamento erro={erro} aoTentarDeNovo={recarregar} />
         ) : imoveis.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-linha px-6 py-16 text-center">
-            <p className="font-titulo text-3xl font-semibold">Nenhum imóvel ainda</p>
-            <p className="mt-2 text-grafite">Cadastre o primeiro: dados, diária e fotos.</p>
-          </div>
+          <EstadoVazio icone="casa" titulo="Nenhum imóvel ainda" texto="Cadastre o primeiro: dados, diária e fotos. Em poucos minutos ele aparece na busca." />
         ) : (
           <ul className="flex flex-col gap-4">
             {imoveis.map((imovel) => (

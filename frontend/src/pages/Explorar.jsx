@@ -6,10 +6,14 @@ import DialogoFiltros from '../components/explorar/DialogoFiltros.jsx';
 import CardImovel from '../components/explorar/CardImovel.jsx';
 import CardServico from '../components/explorar/CardServico.jsx';
 import ErroCarregamento from '../components/ErroCarregamento.jsx';
+import EstadoVazio from '../components/EstadoVazio.jsx';
+import { GradeCarregando } from '../components/Esqueletos.jsx';
 import Icone from '../components/Icone.jsx';
 import { useDados } from '../hooks/useDados.js';
+import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { buscarImoveis, buscarServicos, listarCidades } from '../services/catalogo.js';
 import { TIPOS_IMOVEL, TIPOS_SERVICO, ROTULO_TIPO_SERVICO } from '../utils/perfis.js';
+import { rolarParaOTopo } from '../utils/rolagem.js';
 
 // Os filtros vivem na URL: dá para voltar, recarregar e compartilhar a busca
 function lerFiltros(parametros) {
@@ -29,33 +33,17 @@ function lerFiltros(parametros) {
   };
 }
 
-function GradeCarregando({ formato }) {
-  return (
-    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-hidden="true">
-      {Array.from({ length: 8 }, (_, i) => (
-        <div key={i} className="animate-pulse">
-          <div className={`${formato} rounded-2xl bg-areia`} />
-          <div className="mt-3 h-4 w-3/4 rounded bg-areia" />
-          <div className="mt-2 h-4 w-1/2 rounded bg-areia" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function SemResultados({ aoLimpar }) {
   return (
-    <div className="rounded-2xl border border-dashed border-linha px-6 py-16 text-center">
-      <p className="font-titulo text-3xl font-semibold">Nenhum resultado encontrado</p>
-      <p className="mt-2 text-grafite">Tente mudar as datas, o destino ou remover alguns filtros.</p>
+    <EstadoVazio icone="busca" titulo="Nenhum resultado encontrado" texto="Tente mudar as datas, o destino ou remover alguns filtros.">
       <button
         type="button"
         onClick={aoLimpar}
-        className="mt-6 rounded-xl border border-tinta px-6 py-3 text-sm font-medium hover:bg-tinta hover:text-marfim"
+        className="rounded-full border border-tinta px-6 py-3 text-sm font-medium hover:bg-tinta hover:text-marfim"
       >
         Limpar filtros
       </button>
-    </div>
+    </EstadoVazio>
   );
 }
 
@@ -94,6 +82,8 @@ export default function Explorar() {
   const filtros = lerFiltros(parametros);
   const chaveBusca = parametros.toString();
   const emImoveis = filtros.aba === 'imoveis';
+  const tituloPagina = emImoveis ? 'Explorar imóveis' : 'Explorar serviços premium';
+  useTituloPagina(filtros.cidade ? `${emImoveis ? 'Imóveis' : 'Serviços'} em ${filtros.cidade}` : tituloPagina);
 
   const { dados: cidades } = useDados('cidades', listarCidades);
   const { dados: resultados, erro, carregando, recarregar } = useDados(chaveBusca, () =>
@@ -123,13 +113,14 @@ export default function Explorar() {
 
   function mudarPagina(pagina) {
     atualizarFiltros({ pagina: pagina > 1 ? pagina : '' });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    rolarParaOTopo();
   }
   const periodo = { checkin: filtros.checkin, checkout: filtros.checkout, hospedes: filtros.hospedes };
 
   return (
     <div className="bg-white">
-      <section className="border-b border-linha px-4 pb-6 pt-4 sm:px-6">
+      <h1 className="sr-only">{tituloPagina}</h1>
+      <section aria-label="Busca" className="border-b border-linha px-4 pb-6 pt-4 sm:px-6">
         <AbasExplorar abaAtiva={filtros.aba} />
         <div className="mt-5">
           {emImoveis ? (
@@ -165,7 +156,11 @@ export default function Explorar() {
         </div>
       </div>
 
-      <section className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6" aria-live="polite" aria-busy={carregando}>
+      <section aria-label="Resultados" className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6">
+        {/* A cada busca o leitor de tela anuncia só a contagem, não a lista inteira */}
+        <p role="status" className="sr-only">
+          {carregando || erro ? '' : `Resultado da busca: ${descreverResultado(total, filtros)}`}
+        </p>
         {carregando ? (
           <GradeCarregando formato={emImoveis ? 'aspect-[20/19]' : 'aspect-square'} />
         ) : erro ? (
@@ -175,7 +170,7 @@ export default function Explorar() {
         ) : (
           <>
             <div className="mb-6 flex items-center justify-between gap-4">
-              <h1 className="text-sm font-medium text-grafite">{descreverResultado(total, filtros)}</h1>
+              <p className="text-sm font-medium text-grafite">{descreverResultado(total, filtros)}</p>
               {temFiltros && (
                 <button type="button" onClick={limparFiltros} className="text-sm font-semibold underline underline-offset-4">
                   Limpar filtros

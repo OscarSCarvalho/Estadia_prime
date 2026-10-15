@@ -1,16 +1,57 @@
-import { useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import Icone from '../components/Icone.jsx';
 import ErroCarregamento from '../components/ErroCarregamento.jsx';
+import EstadoVazio from '../components/EstadoVazio.jsx';
+import Janela from '../components/Janela.jsx';
+import { ImovelCarregando } from '../components/Esqueletos.jsx';
 import Avaliacao from '../components/explorar/Avaliacao.jsx';
 import DialogoAvaliacoes from '../components/avaliacoes/DialogoAvaliacoes.jsx';
 import ListaAvaliacoes from '../components/avaliacoes/ListaAvaliacoes.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { useDados } from '../hooks/useDados.js';
+import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { obterImovel, verificarDisponibilidade } from '../services/catalogo.js';
 import { ROTULO_TIPO_IMOVEL, ROTULO_TIPO_SERVICO, ROTULO_UNIDADE_PRECO } from '../utils/perfis.js';
 import { problemaNaEstadia } from '../utils/carrinho.js';
 import { calcularNoites, formatarMoeda, hojeIso } from '../utils/formatacao.js';
+
+// Todas as fotos, grandes, uma embaixo da outra (a grade da página mostra só as 5 primeiras)
+function TodasAsFotos({ fotos, titulo }) {
+  const referencia = useRef(null);
+  const [aberta, setAberta] = useState(false);
+
+  function abrir() {
+    setAberta(true);
+    referencia.current.showModal();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={abrir}
+        className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-xl border border-tinta bg-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-areia"
+      >
+        <Icone nome="todos" tamanho={16} />
+        Mostrar todas as fotos ({fotos.length})
+      </button>
+      <Janela referencia={referencia} titulo={titulo} rotuloFechar="Fechar fotos" largura="max-w-4xl" aoFechar={() => setAberta(false)}>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          {aberta && (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {fotos.map((url, posicao) => (
+                <li key={url} className={posicao % 3 === 0 ? 'sm:col-span-2' : ''}>
+                  <img src={url} alt={`${titulo}, foto ${posicao + 1} de ${fotos.length}`} loading="lazy" className="w-full rounded-xl object-cover" />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Janela>
+    </>
+  );
+}
 
 function Galeria({ fotos, titulo }) {
   const [principal, ...demais] = fotos;
@@ -20,11 +61,17 @@ function Galeria({ fotos, titulo }) {
     <>
       <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:hidden">
         {fotos.map((url, posicao) => (
-          <img key={url} src={url} alt={`${titulo}, foto ${posicao + 1}`} className="aspect-[4/3] w-[85%] shrink-0 snap-center rounded-2xl object-cover" />
+          <img
+            key={url}
+            src={url}
+            alt={`${titulo}, foto ${posicao + 1} de ${fotos.length}`}
+            loading={posicao === 0 ? 'eager' : 'lazy'}
+            className="aspect-[4/3] w-[85%] shrink-0 snap-center rounded-2xl object-cover"
+          />
         ))}
       </div>
 
-      <div className="hidden h-[26rem] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl md:grid lg:h-[30rem]">
+      <div className="relative hidden h-[26rem] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl md:grid lg:h-[30rem]">
         <img
           src={principal}
           alt={`${titulo}, foto principal`}
@@ -37,6 +84,7 @@ function Galeria({ fotos, titulo }) {
             <img key={url} src={url} alt={`${titulo}, foto ${posicao + 2}`} className={`h-full w-full object-cover ${ocupacao}`} />
           );
         })}
+        {fotos.length > 1 && <TodasAsFotos fotos={fotos} titulo={titulo} />}
       </div>
     </>
   );
@@ -132,9 +180,9 @@ function CartaoReserva({ imovel }) {
         <Avaliacao nota={imovel.nota_media} total={imovel.total_avaliacoes} mostrarTotal className="text-sm" />
       </p>
 
-      <div className="mt-5 overflow-hidden rounded-xl border border-grafite/40">
+      <div className="mt-5 overflow-hidden rounded-xl border border-borda">
         <div className="grid grid-cols-2">
-          <label className="border-r border-grafite/40 px-3 py-2.5">
+          <label className="border-r border-borda px-3 py-2.5">
             <span className="block text-[10px] font-bold uppercase tracking-wide">Check-in</span>
             <input type="date" min={hoje} value={checkin} onChange={(e) => atualizar('checkin', e.target.value)} className={campo} />
           </label>
@@ -143,7 +191,7 @@ function CartaoReserva({ imovel }) {
             <input type="date" min={checkin || hoje} value={checkout} onChange={(e) => atualizar('checkout', e.target.value)} className={campo} />
           </label>
         </div>
-        <label className="block border-t border-grafite/40 px-3 py-2.5">
+        <label className="block border-t border-borda px-3 py-2.5">
           <span className="block text-[10px] font-bold uppercase tracking-wide">Hóspedes</span>
           <select value={hospedes} onChange={(e) => atualizar('hospedes', e.target.value)} className={campo}>
             {Array.from({ length: imovel.num_hospedes }, (_, i) => i + 1).map((quantidade) => (
@@ -193,14 +241,11 @@ function CartaoReserva({ imovel }) {
 export default function ImovelDetalhe() {
   const { id } = useParams();
   const { dados, erro, carregando, recarregar } = useDados(`imovel|${id}`, () => obterImovel(id));
+  // Vindo da busca, volta para ela com os mesmos filtros (o card manda o endereço da busca)
+  const voltarPara = useLocation().state?.busca ?? '/explorar';
+  useTituloPagina(carregando ? 'Carregando' : (dados?.imovel.titulo ?? (erro ? 'Erro' : 'Imóvel não encontrado')));
 
-  if (carregando) {
-    return (
-      <p role="status" className="py-24 text-center text-grafite">
-        Carregando…
-      </p>
-    );
-  }
+  if (carregando) return <ImovelCarregando />;
 
   if (erro) {
     return (
@@ -212,11 +257,12 @@ export default function ImovelDetalhe() {
 
   if (!dados) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="font-titulo text-3xl font-semibold">Imóvel não encontrado</h1>
-        <Link to="/explorar" className="mt-6 inline-block font-medium text-ouro-escuro underline underline-offset-4">
-          Voltar para a busca
-        </Link>
+      <div className="mx-auto max-w-xl px-4 py-24">
+        <EstadoVazio TagTitulo="h1" icone="casa" titulo="Imóvel não encontrado" texto="O anúncio pode ter sido desativado pelo anfitrião.">
+          <Link to="/explorar" className="rounded-full bg-tinta px-6 py-3 text-sm font-medium text-marfim hover:bg-grafite">
+            Ver outros imóveis
+          </Link>
+        </EstadoVazio>
       </div>
     );
   }
@@ -226,8 +272,8 @@ export default function ImovelDetalhe() {
   return (
     <div className="bg-white">
       <article className="mx-auto max-w-6xl px-4 pb-20 pt-6 sm:px-6">
-        <Link to="/explorar" className="text-sm font-medium text-grafite hover:text-tinta">
-          ← Voltar para a busca
+        <Link to={voltarPara} className="inline-flex items-center gap-1 text-sm font-medium text-grafite hover:text-tinta">
+          <Icone nome="anterior" tamanho={16} /> Voltar para a busca
         </Link>
 
         <h1 className="mt-4 font-titulo text-4xl font-semibold sm:text-5xl">{imovel.titulo}</h1>

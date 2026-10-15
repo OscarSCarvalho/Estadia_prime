@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import ErroCarregamento from '../../components/ErroCarregamento.jsx';
+import EstadoVazio from '../../components/EstadoVazio.jsx';
+import { ListaCarregando } from '../../components/Esqueletos.jsx';
 import Icone from '../../components/Icone.jsx';
 import Avaliacao from '../../components/explorar/Avaliacao.jsx';
 import FormularioServico from '../../components/painel/FormularioServico.jsx';
 import SeloStatus from '../../components/painel/SeloStatus.jsx';
 import { useDados } from '../../hooks/useDados.js';
+import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { alterarStatusServico, cadastrarServico, editarServico, listarMeusServicos } from '../../services/painel.js';
 import { ROTULO_TIPO_SERVICO, ROTULO_UNIDADE_PRECO, fotoDoServico } from '../../utils/perfis.js';
 import { formatarMoeda } from '../../utils/formatacao.js';
+import { rolarParaOTopo } from '../../utils/rolagem.js';
 
 function LinhaServico({ servico, aoEditar, aoMudar }) {
   const [enviando, setEnviando] = useState(false);
@@ -73,6 +77,7 @@ function LinhaServico({ servico, aoEditar, aoMudar }) {
 }
 
 export default function MeusServicos() {
+  useTituloPagina('Meus serviços');
   const { dados, erro, carregando, recarregar } = useDados('meus-servicos', listarMeusServicos);
   // Alterações locais por cima da lista carregada (cadastro, edição, ativar/desativar)
   const [alterados, setAlterados] = useState({ novos: [], porId: {} });
@@ -102,7 +107,7 @@ export default function MeusServicos() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-ouro-escuro">Painel do prestador</p>
-          <h1 className="mt-2 font-titulo text-5xl font-semibold">Meus serviços</h1>
+          <h1 className="mt-2 font-titulo text-4xl font-semibold sm:text-5xl">Meus serviços</h1>
         </div>
         {emEdicao === null && (
           <button
@@ -129,18 +134,13 @@ export default function MeusServicos() {
         </section>
       )}
 
-      <div className="mt-10" aria-live="polite" aria-busy={carregando}>
+      <div className="mt-10">
         {carregando ? (
-          <p role="status" className="py-12 text-center text-grafite">
-            Carregando…
-          </p>
+          <ListaCarregando />
         ) : erro ? (
           <ErroCarregamento erro={erro} aoTentarDeNovo={recarregar} />
         ) : servicos.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-linha px-6 py-16 text-center">
-            <p className="font-titulo text-3xl font-semibold">Nenhum serviço ainda</p>
-            <p className="mt-2 text-grafite">Cadastre o que você oferece e a cidade onde atende.</p>
-          </div>
+          <EstadoVazio icone="mordomo" titulo="Nenhum serviço ainda" texto="Cadastre o que você oferece e a cidade onde atende." />
         ) : (
           <ul className="flex flex-col gap-4">
             {servicos.map((servico) => (
@@ -149,7 +149,7 @@ export default function MeusServicos() {
                 servico={servico}
                 aoEditar={() => {
                   setEmEdicao(servico);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  rolarParaOTopo();
                 }}
                 aoMudar={registrar}
               />

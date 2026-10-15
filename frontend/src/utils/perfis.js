@@ -22,7 +22,7 @@ export const TIPOS_IMOVEL = [
   { valor: 'cobertura', rotulo: 'Coberturas' },
   { valor: 'apartamento', rotulo: 'Apartamentos' },
   { valor: 'chale', rotulo: 'Chalés' },
-  { valor: 'fazenda', rotulo: 'Fazendas' },
+  { valor: 'fazenda', rotulo: 'Sítios' },
 ];
 
 export const ROTULO_TIPO_IMOVEL = {
@@ -31,7 +31,7 @@ export const ROTULO_TIPO_IMOVEL = {
   cobertura: 'Cobertura',
   apartamento: 'Apartamento',
   chale: 'Chalé',
-  fazenda: 'Fazenda',
+  fazenda: 'Sítio',
 };
 
 export const TIPOS_SERVICO = [
