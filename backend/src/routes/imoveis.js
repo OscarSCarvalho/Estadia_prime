@@ -1,10 +1,11 @@
 const express = require('express');
 const { exigirPerfil } = require('../middleware/auth');
 const { receberFotos } = require('../middleware/receberFotos');
-const { ErroImovelNaoEncontrado, ErroFotoNaoEncontrada } = require('../dominio/erros');
+const { ErroImovelNaoEncontrado, ErroFotoNaoEncontrada, ErroServicoInclusoNaoEncontrado } = require('../dominio/erros');
 const { lerId } = require('./parametros');
 
 const idDoImovel = (req) => lerId(req.params.id, ErroImovelNaoEncontrado);
+const idDoIncluso = (req) => lerId(req.params.inclusoId, ErroServicoInclusoNaoEncontrado);
 
 // /api/imoveis: público, sem login (RN16)
 function criarRotasImoveis({ buscarImoveis, obterImovel, verificarDisponibilidade, listarServicosDaEstadia }) {
@@ -42,6 +43,12 @@ function criarRotasMeusImoveis({
   adicionarFotos,
   removerFoto,
   reordenarFotos,
+  listarInclusos,
+  cadastrarIncluso,
+  editarIncluso,
+  alterarStatusIncluso,
+  reordenarInclusos,
+  removerIncluso,
 }) {
   const rotas = express.Router();
   rotas.use(exigirPerfil('anfitriao'));
@@ -80,6 +87,31 @@ function criarRotasMeusImoveis({
   rotas.delete('/:id/fotos/:fotoId', async (req, res) => {
     const fotoId = lerId(req.params.fotoId, ErroFotoNaoEncontrada);
     res.json({ fotos: await removerFoto(anfitriaoId(req), idDoImovel(req), fotoId) });
+  });
+
+  // RN17: serviços inclusos do imóvel. "ordem" vem antes de /:inclusoId
+  rotas.get('/:id/inclusos', (req, res) => {
+    res.json({ inclusos: listarInclusos(anfitriaoId(req), idDoImovel(req)) });
+  });
+
+  rotas.post('/:id/inclusos', (req, res) => {
+    res.status(201).json({ incluso: cadastrarIncluso(anfitriaoId(req), idDoImovel(req), req.body) });
+  });
+
+  rotas.put('/:id/inclusos/ordem', (req, res) => {
+    res.json({ inclusos: reordenarInclusos(anfitriaoId(req), idDoImovel(req), req.body?.inclusos) });
+  });
+
+  rotas.put('/:id/inclusos/:inclusoId', (req, res) => {
+    res.json({ incluso: editarIncluso(anfitriaoId(req), idDoImovel(req), idDoIncluso(req), req.body) });
+  });
+
+  rotas.patch('/:id/inclusos/:inclusoId/status', (req, res) => {
+    res.json({ incluso: alterarStatusIncluso(anfitriaoId(req), idDoImovel(req), idDoIncluso(req), req.body?.status) });
+  });
+
+  rotas.delete('/:id/inclusos/:inclusoId', (req, res) => {
+    res.json({ inclusos: removerIncluso(anfitriaoId(req), idDoImovel(req), idDoIncluso(req)) });
   });
 
   return rotas;

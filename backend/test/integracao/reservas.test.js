@@ -199,7 +199,7 @@ test('H2.4 e H3.3: anfitrião e prestador veem a reserva; contato só depois da 
   assert.equal(recebidas.length, 1);
   assert.equal(recebidas[0].hospede.nome, 'Hugo Lima');
   assert.equal(recebidas[0].hospede.telefone, null, 'telefone só com reserva confirmada');
-  assert.equal(recebidas[0].repasse_hospedagem, 660000);
+  assert.equal(recebidas[0].repasse_anfitriao, 660000);
   assert.equal(recebidas[0].itens[0].prestador, 'Paulo Andrade');
 
   const agenda = (await contas.prestador.get('/api/agenda')).corpo.agenda;

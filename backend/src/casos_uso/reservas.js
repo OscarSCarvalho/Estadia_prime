@@ -4,6 +4,7 @@ const { calcularReserva } = require('../dominio/precificacao');
 const { validarPedidoReserva, statusExibido, prazoPagamento, exigirTransicao } = require('../dominio/reserva');
 const { dataDentroDaEstadia, hojeEmBrasilia } = require('../dominio/periodo');
 const { situacaoDaAvaliacao, ultimoDiaParaAvaliar } = require('../dominio/avaliacao');
+const { quantidadeDoIncluso } = require('../dominio/servicoIncluso');
 const {
   ErroImovelNaoEncontrado,
   ErroImovelIndisponivel,
@@ -12,6 +13,7 @@ const {
   ErroDataServicoForaDaEstadia,
   ErroServicoIndisponivel,
   ErroCapacidadeExcedida,
+  ErroServicoInclusoIndisponivel,
   ErroReservaNaoEncontrada,
   ErroReservaNaoPendente,
 } = require('../dominio/erros');
@@ -47,8 +49,24 @@ function paraItem(item) {
   };
 }
 
+function paraIncluso(incluso) {
+  return {
+    id: incluso.id,
+    incluso_id: incluso.imovel_servico_id,
+    nome: incluso.nome_contratado,
+    unidade_preco: incluso.unidade_preco,
+    quantidade: incluso.quantidade,
+    preco_contratado: incluso.preco_contratado,
+    subtotal: incluso.subtotal,
+  };
+}
+
+const somar = (linhas, campo) => linhas.reduce((soma, linha) => soma + linha[campo], 0);
+
+// reservas.valor_servicos guarda inclusos + premium (CHECK do total); as telas mostram as partes separadas
 function paraReservaBase(reserva, agora) {
   const status = statusExibido(reserva, agora);
+  const valorInclusos = somar(reserva.inclusos, 'subtotal');
   return {
     id: reserva.id,
     status,
@@ -58,8 +76,11 @@ function paraReservaBase(reserva, agora) {
     num_hospedes: reserva.num_hospedes,
     valor_hospedagem: reserva.valor_hospedagem,
     valor_servicos: reserva.valor_servicos,
+    valor_inclusos: valorInclusos,
+    valor_servicos_premium: reserva.valor_servicos - valorInclusos,
     valor_total: reserva.valor_total,
     imovel: paraImovel(reserva),
+    inclusos: reserva.inclusos.map(paraIncluso),
     itens: reserva.itens.map(paraItem),
   };
 }
@@ -77,12 +98,14 @@ function paraReservaDoHospede(reserva, agora, avaliacoesFeitas = []) {
   };
 }
 
-// O anfitrião vê quanto recebe da hospedagem: a comissão dos serviços é a soma gravada em cada item
+// RN19: o anfitrião recebe hospedagem + inclusos, menos as comissões dessas partes. A comissão total
+// gravada inclui a dos serviços premium, que é a soma gravada em cada item (e vai para os prestadores)
 function paraReservaDoAnfitriao(reserva, agora) {
-  const comissaoServicos = reserva.itens.reduce((soma, item) => soma + item.valor_comissao, 0);
+  const comissaoServicosPremium = somar(reserva.itens, 'valor_comissao');
+  const valorDoAnfitriao = reserva.valor_hospedagem + somar(reserva.inclusos, 'subtotal');
   return {
     ...paraReservaBase(reserva, agora),
-    repasse_hospedagem: reserva.valor_hospedagem - (reserva.valor_comissao - comissaoServicos),
+    repasse_anfitriao: valorDoAnfitriao - (reserva.valor_comissao - comissaoServicosPremium),
     hospede: {
       nome: reserva.hospede_nome,
       telefone: contatoLiberado(reserva) ? reserva.hospede_telefone : null,
@@ -119,7 +142,8 @@ function paraItemDaAgenda(item, agora) {
 }
 
 // SPEC "Carrinho e Criação da Reserva". Conferências e gravação na MESMA transação (CB01):
-// ou a reserva entra inteira, com os preços do banco congelados, ou nada é gravado
+// ou a reserva entra inteira, com os preços do banco congelados, ou nada é gravado.
+// RN18/RN21: os inclusos mantidos pelo hóspede são conferidos (ativos e deste imóvel) na mesma transação
 function criarCriarReserva({ repositorioReservas, repositorioBusca, comissaoHospedagemPct, comissaoServicoPct, relogio = () => new Date() }) {
   return function criarReserva(hospedeId, dados) {
     const agora = relogio();
@@ -139,6 +163,11 @@ function criarCriarReserva({ repositorioReservas, repositorioBusca, comissaoHosp
         if (!dataDentroDaEstadia(item.data, periodo)) throw new ErroDataServicoForaDaEstadia(item);
       }
 
+      const inclusos = repositorioReservas.inclusosParaReserva(imovel.id, pedido.inclusos);
+      for (const inclusoId of pedido.inclusos) {
+        if (!inclusos.has(inclusoId)) throw new ErroServicoInclusoIndisponivel(inclusoId);
+      }
+
       if (!repositorioBusca.imovelEstaLivre(imovel.id, periodo)) throw new ErroImovelIndisponivel();
       for (const item of pedido.itens) {
         if (repositorioReservas.servicoOcupadoNoDia(item.servicoId, item.data)) throw new ErroPrestadorIndisponivel(item);
@@ -148,6 +177,16 @@ function criarCriarReserva({ repositorioReservas, repositorioBusca, comissaoHosp
         precoDiaria: imovel.preco_diaria,
         noites: pedido.noites,
         itens: pedido.itens.map((item) => ({ ...item, precoUnitario: servicos.get(item.servicoId).preco })),
+        inclusos: pedido.inclusos.map((inclusoId) => {
+          const incluso = inclusos.get(inclusoId);
+          return {
+            inclusoId,
+            nome: incluso.nome,
+            unidadePreco: incluso.unidade_preco,
+            precoUnitario: incluso.preco,
+            quantidade: quantidadeDoIncluso(incluso.unidade_preco, { noites: pedido.noites, numHospedes: pedido.numHospedes }),
+          };
+        }),
         comissaoHospedagemPct,
         comissaoServicoPct,
       });

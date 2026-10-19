@@ -29,8 +29,9 @@ function criarBuscarImoveis({ repositorioBusca, hoje = hojeEmBrasilia }) {
   };
 }
 
-// RN12: o endereço fica oculto. Os serviços são os da cidade do imóvel (RN05)
-function criarObterImovel({ repositorioBusca, repositorioServicos }) {
+// RN12: o endereço fica oculto. Os serviços premium são os da cidade do imóvel (RN05);
+// os inclusos (RN17) são os ativos do próprio anfitrião, na ordem que ele escolheu
+function criarObterImovel({ repositorioBusca, repositorioServicos, repositorioServicosInclusos }) {
   return function obterImovel(imovelId) {
     const imovel = repositorioBusca.obterImovelVisivel(imovelId);
     if (!imovel) throw new ErroImovelNaoEncontrado();
@@ -44,6 +45,7 @@ function criarObterImovel({ repositorioBusca, repositorioServicos }) {
         fotos: repositorioBusca.fotosDosImoveis([imovel.id]).get(imovel.id),
         servicos_disponiveis: tiposDisponiveis,
       },
+      inclusos: repositorioServicosInclusos.listarAtivos(imovel.id),
       servicos,
     };
   };

@@ -7,6 +7,7 @@ const { criarRepositorioServicos } = require('./repositorios/repositorioServicos
 const { criarRepositorioBusca } = require('./repositorios/repositorioBusca');
 const { criarRepositorioReservas } = require('./repositorios/repositorioReservas');
 const { criarRepositorioAvaliacoes } = require('./repositorios/repositorioAvaliacoes');
+const { criarRepositorioServicosInclusos } = require('./repositorios/repositorioServicosInclusos');
 const { criarServicoSenhaBcrypt } = require('./adaptadores/servicoSenhaBcrypt');
 const { criarLimitadorTentativasMemoria } = require('./adaptadores/limitadorTentativasMemoria');
 const { criarArmazenamentoFotosDisco } = require('./adaptadores/armazenamentoFotosDisco');
@@ -16,6 +17,7 @@ const { criarObterUsuario } = require('./casos_uso/obterUsuario');
 const imoveisDoAnfitriao = require('./casos_uso/imoveisDoAnfitriao');
 const fotosDoImovel = require('./casos_uso/fotosDoImovel');
 const servicosDoPrestador = require('./casos_uso/servicosDoPrestador');
+const servicosInclusos = require('./casos_uso/servicosInclusos');
 const catalogo = require('./casos_uso/catalogo');
 const reservas = require('./casos_uso/reservas');
 const avaliacoes = require('./casos_uso/avaliacoes');
@@ -41,6 +43,7 @@ function criarApp({ db, config, registrarErro = console.error }) {
   const repositorioBusca = criarRepositorioBusca(db, visibilidade);
   const repositorioReservas = criarRepositorioReservas(db, visibilidade);
   const repositorioAvaliacoes = criarRepositorioAvaliacoes(db);
+  const repositorioServicosInclusos = criarRepositorioServicosInclusos(db);
   // CB09: a comissão vale para novas reservas; as antigas guardam o valor gravado
   const comissoes = { comissaoHospedagemPct: config.comissaoHospedagemPct, comissaoServicoPct: config.comissaoServicoPct };
   const servicoSenha = criarServicoSenhaBcrypt({ custo: config.custoHashSenha });
@@ -62,13 +65,20 @@ function criarApp({ db, config, registrarErro = console.error }) {
     removerFoto: fotosDoImovel.criarRemoverFoto({ repositorioImoveis, repositorioFotos, armazenamentoFotos }),
     reordenarFotos: fotosDoImovel.criarReordenarFotos({ repositorioImoveis, repositorioFotos }),
 
+    listarInclusos: servicosInclusos.criarListarInclusos({ repositorioImoveis, repositorioServicosInclusos }),
+    cadastrarIncluso: servicosInclusos.criarCadastrarIncluso({ repositorioImoveis, repositorioServicosInclusos }),
+    editarIncluso: servicosInclusos.criarEditarIncluso({ repositorioImoveis, repositorioServicosInclusos }),
+    alterarStatusIncluso: servicosInclusos.criarAlterarStatusIncluso({ repositorioImoveis, repositorioServicosInclusos }),
+    reordenarInclusos: servicosInclusos.criarReordenarInclusos({ repositorioImoveis, repositorioServicosInclusos }),
+    removerIncluso: servicosInclusos.criarRemoverIncluso({ repositorioImoveis, repositorioServicosInclusos }),
+
     cadastrarServico: servicosDoPrestador.criarCadastrarServico({ repositorioServicos }),
     editarServico: servicosDoPrestador.criarEditarServico({ repositorioServicos }),
     alterarStatusServico: servicosDoPrestador.criarAlterarStatusServico({ repositorioServicos }),
     listarMeusServicos: servicosDoPrestador.criarListarMeusServicos({ repositorioServicos }),
 
     buscarImoveis: catalogo.criarBuscarImoveis({ repositorioBusca }),
-    obterImovel: catalogo.criarObterImovel({ repositorioBusca, repositorioServicos }),
+    obterImovel: catalogo.criarObterImovel({ repositorioBusca, repositorioServicos, repositorioServicosInclusos }),
     verificarDisponibilidade: catalogo.criarVerificarDisponibilidade({ repositorioBusca }),
     listarCidades: catalogo.criarListarCidades({ repositorioBusca }),
     buscarServicos: catalogo.criarBuscarServicos({ repositorioServicos }),
