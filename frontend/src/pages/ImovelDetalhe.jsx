@@ -12,7 +12,12 @@ import { useAuth } from '../hooks/useAuth.js';
 import { useDados } from '../hooks/useDados.js';
 import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { obterImovel, verificarDisponibilidade } from '../services/catalogo.js';
-import { ROTULO_TIPO_IMOVEL, ROTULO_TIPO_SERVICO, ROTULO_UNIDADE_INCLUSO, ROTULO_UNIDADE_PRECO } from '../utils/perfis.js';
+import {
+  ROTULO_TIPO_SERVICO,
+  ROTULO_UNIDADE_INCLUSO,
+  ROTULO_UNIDADE_PRECO,
+  descreverImovelInteiro,
+} from '../utils/perfis.js';
 import { problemaNaEstadia } from '../utils/carrinho.js';
 import { calcularNoites, formatarMoeda, hojeIso } from '../utils/formatacao.js';
 
@@ -328,7 +333,7 @@ export default function ImovelDetalhe() {
           <div>
             <section className="border-b border-linha pb-8">
               <h2 className="text-xl font-semibold">
-                {ROTULO_TIPO_IMOVEL[imovel.tipo_imovel]} inteira · Anfitrião: {imovel.anfitriao}
+                {descreverImovelInteiro(imovel.tipo_imovel)} · Anfitrião: {imovel.anfitriao}
               </h2>
               <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-grafite">
                 <span className="inline-flex items-center gap-1.5">

@@ -36,6 +36,13 @@ export const ROTULO_TIPO_IMOVEL = {
   fazenda: 'Fazenda',
 };
 
+const TIPOS_IMOVEL_FEMININOS = new Set(['villa', 'casa', 'cobertura', 'fazenda']);
+
+// Concordância do título da página do imóvel: "Casa inteira", "Sítio inteiro", "Chalé inteiro"
+export function descreverImovelInteiro(tipoImovel) {
+  return `${ROTULO_TIPO_IMOVEL[tipoImovel]} ${TIPOS_IMOVEL_FEMININOS.has(tipoImovel) ? 'inteira' : 'inteiro'}`;
+}
+
 // RN17: serviços inclusos do próprio anfitrião (valores do CHECK da migração 002)
 export const UNIDADES_INCLUSO = [
   { valor: 'noite', rotulo: 'Por noite' },
