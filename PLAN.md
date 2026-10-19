@@ -15,7 +15,7 @@
 | `DOM` | `backend/src/dominio/` | Regras puras, erros específicos. Zero dependência externa |
 | `UC` | `backend/src/casos_uso/` | Orquestração. Recebe repositórios e adaptadores por injeção |
 | `REP` | `backend/src/repositorios/` | SQL puro com better-sqlite3 |
-| `ADP` | `backend/src/adaptadores/` | Mundo externo: bcrypt, sessão, Stripe, disco |
+| `ADP` | `backend/src/adaptadores/` | Mundo externo: bcrypt, sessão, Asaas, cifra, disco |
 | `INT` | `backend/src/routes/` + `middleware/` | HTTP: validação de entrada, status code, JSON |
 | `INF` | `backend/src/db/`, `app.js`, `server.js`, `config.js` | Composição e configuração |
 | `FE` | `frontend/src/` | React |
@@ -131,25 +131,26 @@
 | T4c.7 | OPS | `db:demonstracao` dá 16 inclusos a 6 dos 12 imóveis (pula imóvel que já tem); `db:testar` conta as 10 tabelas | — | ✅ |
 | T4c.8 | FE | Painel "Serviços inclusos" no editar imóvel (adicionar, editar, ativar/desativar, remover, arrastar/setas, sugestões rápidas); selo no card; filtro no diálogo; bloco na página do imóvel; carrinho com checkbox, valor por linha e total em 3 partes, seleção salva e aviso se o incluso for desativado; inclusos em "Minhas reservas" e "Reservas recebidas" | H2.5, H5.3, H5.4 | ✅ |
 
-## ETAPA 4b — Stripe Connect (Pagamento com Split)
+## ETAPA 4b — Asaas (Pagamento com repasse)
 
-> **Ordem definida pelo cliente em 2026-10-12:** o pagamento é a **última** etapa de desenvolvimento, executada depois da Etapa 5 e antes do deploy (Etapa 6).
+> **Gateway trocado pelo cliente em 2026-10-19:** Stripe Connect → **Asaas**, no modelo "cobrança única + transferências" (CONTEXT §4.4). O hóspede paga uma cobrança na conta da plataforma; 24h depois do check-in, a plataforma transfere o repasse para a subconta de cada recebedor. Continua sendo a última etapa de desenvolvimento antes do deploy (Etapa 6).
 
 | ID | Camada | Tarefa | Referência | Status |
 |---|---|---|---|---|
-| T4b.1 | OPS | Conferir taxas vigentes do Stripe BR e Pix na conta do cliente; chaves de teste no `.env` | PROPOSAL §4.3 | ⬜ |
-| T4b.2 | INF | Migração 003 (a 002 virou a dos serviços inclusos, Etapa 4c): `pagamentos.id_evento_processado`, `reservas.repasse_em`, `reserva_servicos.reembolsado` | CB04, RN09 | ⬜ |
-| T4b.3 | ADP | `gatewayStripe.js`: conta Express, link de cadastro, PaymentIntent, transfer, refund, verificação de assinatura do webhook | — | ⬜ |
-| T4b.4 | UC | `iniciarCadastroRecebimento`, `atualizarRecebimento` (webhook `account.updated`) | H1.3, RN13 | ⬜ |
-| T4b.5 | UC | `iniciarPagamento` (cartão/Pix) | H6.1 | ⬜ |
-| T4b.6 | UC | `processarEventoPagamento`: idempotente, confirma reserva, trata pagamento após expiração | RN08, CB03, CB04 | ⬜ |
-| T4b.7 | UC | `executarRepasses`: transfers 24h após o check-in (rotina a cada 15 min) | RN09, H6.2 | ⬜ |
-| T4b.8 | UC | `cancelarReserva`: reembolso parcial/integral via gateway + liberação de datas | RN10, H6.3 | ⬜ |
-| T4b.9 | INT | `routes/pagamentos.js` + webhook com `express.raw` | — | ⬜ |
-| T4b.10 | QA | Integração com gateway falso (todas as transições) + teste manual no modo de teste do Stripe | Cenários "Pagamento" e "Cancelamento" | ⬜ |
-| T4b.11 | FE | Checkout com Stripe Elements, tela de confirmação, botão "Cadastrar recebimento" nos painéis | H6.1, H1.3 | ⬜ |
-
----
+| T4b.1 | OPS | Conferir na documentação oficial do Asaas endpoints, campos obrigatórios e eventos; registrar as diferenças no CONTEXT §4.4; variáveis no `.env.example` | CONTEXT §4.4, §7 | ⬜ |
+| T4b.2 | INF | Migração 003: `usuarios` (CPF/CNPJ, cliente, subconta, apiKey cifrada, situação), `pagamentos` recriada (Pix, fatura, taxa, reembolso, prazo), `eventos_gateway`, `repasses`, `reservas.repasse_em`, itens `reembolsado` | CB04, RN09 | ⬜ |
+| T4b.3 | DOM | `documento.js` (CPF/CNPJ com dígito verificador, máscara), `recebimento.js`, `pagamento.js` (método, prazo, divergência, CB03), `repasse.js` (valores por recebedor, 24h após o check-in); erros novos | RN07–RN10, RN13 | ⬜ |
+| T4b.4 | ADP | `gatewayAsaas.js` (fetch nativo, 15 s, erros → `ErroGateway`) e `gatewayFalso.js` com a mesma interface; `cifraAesGcm.js`; `config.js` com as travas de produção | — | ⬜ |
+| T4b.5 | REP | `repositorioPagamentos.js`, `repositorioRepasses.js`; usuários e reservas com os campos novos | — | ⬜ |
+| T4b.6 | UC | `iniciarCadastroRecebimento` + situação (webhook ou consulta), `atualizarDocumento` | H1.3, RN13 | ⬜ |
+| T4b.7 | UC | `iniciarPagamento` (Pix/cartão, mesma cobrança se chamar de novo), `obterSituacaoPagamento` | H6.1, RN07 | ⬜ |
+| T4b.8 | UC | `processarEventoPagamento`: idempotente, confere valor e referência, confirma (RN08), CB03 (reativa ou reembolsa), recusado, reembolsado | RN08, CB03, CB04 | ⬜ |
+| T4b.9 | UC | `expirarReservasPendentes`, `executarRepasses` (até 5 tentativas), `reembolsarPendentes`; rotina de 15 min no `server.js` com trava | RN07, RN09 | ⬜ |
+| T4b.10 | UC | `cancelarReserva` com prévia (RN10 + RN20), reembolso parcial/integral, itens marcados, recusa depois do repasse | RN10, RN20, H6.3 | ⬜ |
+| T4b.11 | INT | Rotas `/api/recebimento`, `/api/reservas/:id/pagamento`, `/api/reservas/:id/cancelar`, `/api/webhooks/asaas`, `PUT /api/auth/eu/documento` | — | ⬜ |
+| T4b.12 | QA | Unitários (CPF/CNPJ, repasses somam o total, adaptadores com fetch falso) + integração com o gateway falso (todas as transições do SPEC) | Cenários "Pagamento" e "Cancelamento" | ⬜ |
+| T4b.13 | FE | Tela `/reservas/:id/pagamento` (Pix com QR e contagem, cartão pela fatura do Asaas, CPF), confirmação com endereço, cadastro de recebimento nos painéis, status do repasse, cancelamento com prévia | H6.1, H6.3, H1.3, RN12 | ⬜ |
+| T4b.14 | OPS | README: teste manual no sandbox do Asaas (conta, chave, webhook por túnel, Pix de teste) | — | ⬜ |
 
 ## ETAPA 5 — Avaliações, Painéis e Acabamento
 
@@ -173,5 +174,5 @@
 | T6.1 | QA | E2E Playwright do fluxo principal do hóspede (busca → pagamento de teste → avaliação) | SPEC §1 | ⬜ |
 | T6.2 | OPS | VPS: Node 24 + PM2, Nginx (frontend estático + proxy `/api`), HTTPS Let's Encrypt, `trust proxy` | RNF | ⬜ |
 | T6.3 | OPS | Backup diário do SQLite (`.backup` online) com retenção de 7 dias + cópia externa | RNF | ⬜ |
-| T6.4 | OPS | Webhook do Stripe apontando para produção + troca para as chaves reais | — | ⬜ |
+| T6.4 | OPS | Asaas em produção: chave Pix cadastrada na conta principal, webhook apontando para `https://<domínio>/api/webhooks/asaas`, chave de produção e `CHAVE_CRIPTOGRAFIA` só no servidor | CONTEXT §4.4 | ⬜ |
 | T6.5 | QA | `VALIDATE.md`: matriz SPEC × testes, resultado e checklist de go-live | Fase 5 | ⬜ |
