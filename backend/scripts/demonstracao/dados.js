@@ -290,4 +290,36 @@ const SERVICOS = [
   }
 ];
 
-module.exports = { IMOVEIS, SERVICOS };
+// RN17: serviços inclusos do próprio anfitrião em metade dos imóveis (6 de 12), pelo título
+const INCLUSOS = {
+  'Villa Vista Mar': [
+    { nome: 'Limpeza diária', descricao: 'Arrumação dos quartos e áreas comuns todas as manhãs.', preco: 250, unidade_preco: 'noite' },
+    { nome: 'Café da manhã', descricao: 'Frutas, pães artesanais e sucos servidos no deck.', preco: 75, unidade_preco: 'hospede' },
+    { nome: 'Piscineiro', descricao: 'Tratamento e limpeza da piscina durante a estadia.', preco: 180, unidade_preco: 'estadia' }
+  ],
+  'Mansão Jardim Tropical': [
+    { nome: 'Caseiro', descricao: 'Mora no terreno e cuida do jardim e da manutenção.', preco: 200, unidade_preco: 'noite' },
+    { nome: 'Enxoval de cama e banho', descricao: 'Lençóis de algodão egípcio e toalhas felpudas.', preco: 60, unidade_preco: 'hospede' }
+  ],
+  'Chalé da Serra': [
+    { nome: 'Lenha', descricao: 'Lenha seca de eucalipto para a lareira, reposta todos os dias.', preco: 90, unidade_preco: 'noite' },
+    { nome: 'Café da manhã', descricao: 'Café colonial com queijos e geleias da região.', preco: 65, unidade_preco: 'hospede' },
+    { nome: 'Enxoval de cama e banho', preco: 150, unidade_preco: 'estadia' }
+  ],
+  'Fazenda Vale Verde': [
+    { nome: 'Caseiro', descricao: 'Recebe o grupo e cuida dos animais e da horta.', preco: 220, unidade_preco: 'noite' },
+    { nome: 'Lenha', descricao: 'Para o fogão a lenha e a fogueira.', preco: 120, unidade_preco: 'estadia' },
+    { nome: 'Piscineiro', preco: 250, unidade_preco: 'estadia' },
+    { nome: 'Limpeza diária', preco: 300, unidade_preco: 'noite' }
+  ],
+  'Villa Mediterrânea': [
+    { nome: 'Limpeza diária', preco: 280, unidade_preco: 'noite' },
+    { nome: 'Café da manhã', descricao: 'Mesa mediterrânea com azeites, queijos e pães de fermentação natural.', preco: 90, unidade_preco: 'hospede' }
+  ],
+  'Casa Minimalista Itapororoca': [
+    { nome: 'Enxoval de cama e banho', descricao: 'Roupa de cama de linho e toalhas de praia.', preco: 200, unidade_preco: 'estadia' },
+    { nome: 'Piscineiro', preco: 150, unidade_preco: 'estadia' }
+  ]
+};
+
+module.exports = { IMOVEIS, SERVICOS, INCLUSOS };

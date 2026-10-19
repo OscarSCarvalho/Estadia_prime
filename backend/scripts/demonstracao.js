@@ -4,7 +4,8 @@
 // Uso: npm run db:demonstracao -- <e-mail da conta de anfitrião>
 //   - os 12 imóveis vão para a conta de anfitrião informada (aparecem no painel "Meus imóveis")
 //   - os 14 serviços ganham prestadores fictícios (@demo.example.com), sem senha conhecida
-//   - pode rodar de novo: o que já existe é pulado
+//   - metade dos imóveis ganha serviços inclusos do anfitrião (RN17)
+//   - pode rodar de novo: o que já existe é pulado (imóvel que já tem incluso não ganha outros)
 const fs = require('node:fs');
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
@@ -15,13 +16,15 @@ const { criarRepositorioUsuarios } = require('../src/repositorios/repositorioUsu
 const { criarRepositorioImoveis } = require('../src/repositorios/repositorioImoveis');
 const { criarRepositorioFotos } = require('../src/repositorios/repositorioFotos');
 const { criarRepositorioServicos } = require('../src/repositorios/repositorioServicos');
+const { criarRepositorioServicosInclusos } = require('../src/repositorios/repositorioServicosInclusos');
 const { criarServicoSenhaBcrypt } = require('../src/adaptadores/servicoSenhaBcrypt');
 const { criarArmazenamentoFotosDisco } = require('../src/adaptadores/armazenamentoFotosDisco');
 const { criarCadastrarUsuario } = require('../src/casos_uso/cadastrarUsuario');
 const { criarCadastrarImovel } = require('../src/casos_uso/imoveisDoAnfitriao');
 const { criarAdicionarFotos } = require('../src/casos_uso/fotosDoImovel');
 const { criarCadastrarServico } = require('../src/casos_uso/servicosDoPrestador');
-const { IMOVEIS, SERVICOS } = require('./demonstracao/dados');
+const { criarCadastrarIncluso } = require('../src/casos_uso/servicosInclusos');
+const { IMOVEIS, SERVICOS, INCLUSOS } = require('./demonstracao/dados');
 
 const PASTA_FOTOS = path.join(__dirname, 'demonstracao', 'fotos');
 const DOMINIO_PRESTADORES = 'demo.example.com';
@@ -48,11 +51,13 @@ async function main() {
   const repositorioImoveis = criarRepositorioImoveis(db);
   const repositorioFotos = criarRepositorioFotos(db);
   const repositorioServicos = criarRepositorioServicos(db);
+  const repositorioServicosInclusos = criarRepositorioServicosInclusos(db);
   const armazenamentoFotos = criarArmazenamentoFotosDisco({ pasta: config.pastaUploads });
 
   const cadastrarImovel = criarCadastrarImovel({ repositorioImoveis });
   const adicionarFotos = criarAdicionarFotos({ repositorioImoveis, repositorioFotos, armazenamentoFotos });
   const cadastrarServico = criarCadastrarServico({ repositorioServicos });
+  const cadastrarIncluso = criarCadastrarIncluso({ repositorioImoveis, repositorioServicosInclusos });
   const cadastrarUsuario = criarCadastrarUsuario({
     repositorioUsuarios,
     servicoSenha: criarServicoSenhaBcrypt({ custo: config.custoHashSenha }),
@@ -74,6 +79,14 @@ async function main() {
       imoveisCriados += 1;
     }
 
+    let inclusosCriados = 0;
+    for (const imovel of repositorioImoveis.listarDoAnfitriao(anfitriao.id)) {
+      const inclusos = INCLUSOS[imovel.titulo];
+      if (!inclusos || repositorioServicosInclusos.listar(imovel.id).length > 0) continue;
+      for (const dados of inclusos) cadastrarIncluso(anfitriao.id, imovel.id, dados);
+      inclusosCriados += inclusos.length;
+    }
+
     let servicosCriados = 0;
     for (const { prestador: nome, ...dados } of SERVICOS) {
       const email = emailDoPrestador(nome);
@@ -85,6 +98,7 @@ async function main() {
     }
 
     console.log(`✔ ${imoveisCriados} imóveis criados para ${emailAnfitriao} (${IMOVEIS.length - imoveisCriados} já existiam)`);
+    console.log(`✔ ${inclusosCriados} serviços inclusos criados nos imóveis do anfitrião`);
     console.log(`✔ ${servicosCriados} serviços criados (${SERVICOS.length - servicosCriados} já existiam)`);
     if (!config.permitirSemRecebimento) {
       console.log('⚠ PERMITIR_SEM_RECEBIMENTO não está "true" no .env: sem conta Stripe, nada disso aparece na busca (RN13)');
