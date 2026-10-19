@@ -1,6 +1,7 @@
 const { ErroDadosInvalidos, ErroTransicaoStatusInvalida } = require('./erros');
 const { ehDataValida, validarPeriodo } = require('./periodo');
 const { inteiroEntre } = require('./textos');
+const { LIMITE_INCLUSOS_POR_IMOVEL } = require('./servicoIncluso');
 
 // RN07: reserva pendente sem pagamento aprovado expira depois deste prazo e libera as datas
 const PRAZO_PAGAMENTO_MINUTOS = 30;
@@ -81,10 +82,21 @@ function validarPedidoReserva(dados = {}, { hoje }) {
     }
   }
 
+  const inclusos = validarInclusosMantidos(dados.inclusos);
+  if (inclusos === null) camposInvalidos.inclusos = `Envie a lista de ids dos serviços inclusos mantidos (até ${LIMITE_INCLUSOS_POR_IMOVEL})`;
+
   if (Object.keys(camposInvalidos).length > 0) throw new ErroDadosInvalidos(camposInvalidos);
 
   const periodo = validarPeriodo({ checkin: dados.checkin, checkout: dados.checkout, hoje });
-  return { imovelId, numHospedes, ...periodo, itens: [...itensPorChave.values()] };
+  return { imovelId, numHospedes, ...periodo, itens: [...itensPorChave.values()], inclusos };
+}
+
+// RN18: ids dos inclusos que o hóspede MANTEVE marcados. Sem a lista, nenhum incluso entra:
+// nada é cobrado sem estar escolhido. Id repetido conta uma vez só
+function validarInclusosMantidos(inclusos = []) {
+  if (!Array.isArray(inclusos) || inclusos.length > LIMITE_INCLUSOS_POR_IMOVEL) return null;
+  const ids = inclusos.map((id) => inteiroEntre(id, 1, Number.MAX_SAFE_INTEGER));
+  return ids.includes(null) ? null : [...new Set(ids)];
 }
 
 module.exports = {

@@ -51,6 +51,7 @@ describe('filtros da busca (H4.1)', () => {
         precoMin: null,
         precoMax: null,
         servicos: [],
+        comInclusos: false,
         checkin: null,
         checkout: null,
       },
@@ -80,6 +81,7 @@ describe('filtros da busca (H4.1)', () => {
       precoMin: 100000,
       precoMax: 300050,
       servicos: ['mordomo', 'barman'],
+      comInclusos: false,
       checkin: '2026-12-21',
       checkout: '2026-12-24',
     });

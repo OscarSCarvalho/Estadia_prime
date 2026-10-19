@@ -105,6 +105,7 @@ describe('pedido de reserva vindo do navegador', () => {
         { servicoId: 7, data: '2026-12-21', quantidade: 3 },
         { servicoId: 7, data: '2026-12-22', quantidade: 1 },
       ],
+      inclusos: [],
     });
   });
 

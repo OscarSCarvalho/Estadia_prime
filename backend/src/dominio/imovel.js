@@ -3,8 +3,8 @@ const { reaisParaCentavos } = require('./dinheiro');
 const { UFS, normalizarCidade, problemaNaCidade, normalizarEstado } = require('./cidade');
 const { textoEmUmaLinha, textoLongo, inteiroEntre } = require('./textos');
 
-// Os valores seguem o CHECK de imoveis.tipo_imovel no schema.sql
-const TIPOS_IMOVEL = Object.freeze(['casa', 'apartamento', 'cobertura', 'chale', 'villa', 'fazenda']);
+// Os valores seguem o CHECK de imoveis.tipo_imovel (migração 002 acrescentou 'sitio')
+const TIPOS_IMOVEL = Object.freeze(['casa', 'apartamento', 'cobertura', 'chale', 'villa', 'fazenda', 'sitio']);
 const STATUS_IMOVEL = Object.freeze(['ativo', 'inativo']);
 const LIMITE_FOTOS_IMOVEL = 10;
 

@@ -1,6 +1,7 @@
 // RN10, política de cancelamento do MVP:
 //   - até 7 dias antes do check-in: reembolso integral
 //   - com menos de 7 dias: a hospedagem não volta; cada serviço volta se faltarem mais de 48h para o dia dele
+// RN20: os serviços inclusos do anfitrião seguem a regra da HOSPEDAGEM (só voltam no reembolso integral).
 // O reembolso de verdade (Stripe) é da Etapa 4b; aqui fica só a conta, testável sem gateway.
 
 const ANTECEDENCIA_REEMBOLSO_INTEGRAL_DIAS = 7;
@@ -16,8 +17,12 @@ function horasAte(data, agora) {
   return (inicioDoDiaEmBrasilia(data) - agora.getTime()) / UMA_HORA_MS;
 }
 
-// `reserva`: { data_checkin, valor_hospedagem }; `itens`: [{ id, data_servico, subtotal }]
-function calcularReembolso({ reserva, itens, agora = new Date() }) {
+const somarReembolsados = (linhas) => linhas.filter((linha) => linha.reembolsado).reduce((soma, linha) => soma + linha.valor, 0);
+const semValor = (linhas) => linhas.map(({ id, reembolsado }) => ({ id, reembolsado }));
+
+// `reserva`: { data_checkin, valor_hospedagem }; `itens` (premium): [{ id, data_servico, subtotal }];
+// `inclusos`: [{ id, subtotal }]
+function calcularReembolso({ reserva, itens, inclusos = [], agora = new Date() }) {
   const integral = horasAte(reserva.data_checkin, agora) >= ANTECEDENCIA_REEMBOLSO_INTEGRAL_DIAS * 24;
 
   const itensReembolsados = itens.map((item) => ({
@@ -25,16 +30,20 @@ function calcularReembolso({ reserva, itens, agora = new Date() }) {
     reembolsado: integral || horasAte(item.data_servico, agora) > ANTECEDENCIA_REEMBOLSO_SERVICO_HORAS,
     valor: item.subtotal,
   }));
+  const inclusosReembolsados = inclusos.map((incluso) => ({ id: incluso.id, reembolsado: integral, valor: incluso.subtotal }));
 
   const valorHospedagem = integral ? reserva.valor_hospedagem : 0;
-  const valorServicos = itensReembolsados.filter((item) => item.reembolsado).reduce((soma, item) => soma + item.valor, 0);
+  const valorInclusos = somarReembolsados(inclusosReembolsados);
+  const valorServicos = somarReembolsados(itensReembolsados);
 
   return {
     integral,
     valorHospedagem,
+    valorInclusos,
     valorServicos,
-    valorTotal: valorHospedagem + valorServicos,
-    itens: itensReembolsados.map(({ id, reembolsado }) => ({ id, reembolsado })),
+    valorTotal: valorHospedagem + valorInclusos + valorServicos,
+    itens: semValor(itensReembolsados),
+    inclusos: semValor(inclusosReembolsados),
   };
 }
 

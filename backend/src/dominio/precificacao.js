@@ -1,4 +1,4 @@
-// RN01–RN03: todos os valores da reserva, em centavos inteiros, calculados só com dados do banco.
+// RN01–RN03 e RN19: todos os valores da reserva, em centavos inteiros, calculados só com dados do banco.
 // Nada que venha do navegador entra aqui como preço (SPEC: "Preço manipulado no navegador")
 
 // RN03 + CB10: o repasse é arredondado para baixo e o centavo que sobra fica com a plataforma.
@@ -8,26 +8,39 @@ function dividirValor(valor, comissaoPct) {
   return { comissao: valor - repasse, repasse };
 }
 
-// `itens`: [{ precoUnitario, quantidade, ...qualquer outro campo, que é mantido }]
-function calcularReserva({ precoDiaria, noites, itens = [], comissaoHospedagemPct, comissaoServicoPct }) {
+// Cada linha é dividida sozinha: a comissão gravada por item fecha no centavo com o subtotal
+function calcularLinhas(linhas, comissaoPct) {
+  return linhas.map((linha) => {
+    const subtotal = linha.precoUnitario * linha.quantidade;
+    const { comissao, repasse } = dividirValor(subtotal, comissaoPct);
+    return { ...linha, subtotal, valorComissao: comissao, repasse };
+  });
+}
+
+const somar = (linhas, campo) => linhas.reduce((soma, linha) => soma + linha[campo], 0);
+
+// `itens`: serviços premium dos prestadores; `inclusos`: serviços do próprio anfitrião (RN17).
+// Ambos [{ precoUnitario, quantidade, ...qualquer outro campo, que é mantido }].
+// RN19: os inclusos pagam a comissão da hospedagem e o repasse deles vai para o anfitrião.
+// `valorServicos` = inclusos + premium, como em reservas.valor_servicos (CHECK valor_total = hospedagem + serviços)
+function calcularReserva({ precoDiaria, noites, itens = [], inclusos = [], comissaoHospedagemPct, comissaoServicoPct }) {
   const valorHospedagem = precoDiaria * noites;
   const hospedagem = dividirValor(valorHospedagem, comissaoHospedagemPct);
+  const inclusosCalculados = calcularLinhas(inclusos, comissaoHospedagemPct);
+  const itensCalculados = calcularLinhas(itens, comissaoServicoPct);
 
-  const itensCalculados = itens.map((item) => {
-    const subtotal = item.precoUnitario * item.quantidade;
-    const { comissao, repasse } = dividirValor(subtotal, comissaoServicoPct);
-    return { ...item, subtotal, valorComissao: comissao, repasse };
-  });
-
-  const valorServicos = itensCalculados.reduce((soma, item) => soma + item.subtotal, 0);
-  const comissaoServicos = itensCalculados.reduce((soma, item) => soma + item.valorComissao, 0);
+  const valorInclusos = somar(inclusosCalculados, 'subtotal');
+  const valorServicosPremium = somar(itensCalculados, 'subtotal');
 
   return {
     valorHospedagem,
-    valorServicos,
-    valorTotal: valorHospedagem + valorServicos,
-    valorComissao: hospedagem.comissao + comissaoServicos,
-    repasseAnfitriao: hospedagem.repasse,
+    valorInclusos,
+    valorServicosPremium,
+    valorServicos: valorInclusos + valorServicosPremium,
+    valorTotal: valorHospedagem + valorInclusos + valorServicosPremium,
+    valorComissao: hospedagem.comissao + somar(inclusosCalculados, 'valorComissao') + somar(itensCalculados, 'valorComissao'),
+    repasseAnfitriao: hospedagem.repasse + somar(inclusosCalculados, 'repasse'),
+    inclusos: inclusosCalculados,
     itens: itensCalculados,
   };
 }

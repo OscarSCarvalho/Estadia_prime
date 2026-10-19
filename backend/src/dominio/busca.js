@@ -9,6 +9,7 @@ const { textoOuVazio, inteiroEntre } = require('./textos');
 const IMOVEIS_POR_PAGINA = 20;
 const PAGINA_MAXIMA = 10_000;
 const HOSPEDES_MAXIMO = 50;
+const FILTRO_LIGADO = new Map([['', false], ['0', false], ['false', false], ['1', true], ['true', true]]);
 
 // Parâmetro repetido na URL (?tipo=a&tipo=b) chega como lista: vale o primeiro
 function primeiroValor(valor) {
@@ -48,6 +49,10 @@ function validarFiltrosBusca(consulta = {}, { hoje }) {
     camposInvalidos.servicos = `Serviços aceitos: ${TIPOS_SERVICO.join(', ')}`;
   }
 
+  // RN17: só imóveis com pelo menos 1 serviço incluso ativo
+  const comInclusos = FILTRO_LIGADO.get(texto('com_inclusos'));
+  if (comInclusos === undefined) camposInvalidos.com_inclusos = 'Use com_inclusos=1 para ver só imóveis com serviços inclusos';
+
   const pagina = texto('pagina') ? inteiroEntre(texto('pagina'), 1, PAGINA_MAXIMA) : 1;
   if (pagina === null) camposInvalidos.pagina = 'Página inválida';
 
@@ -56,7 +61,7 @@ function validarFiltrosBusca(consulta = {}, { hoje }) {
   const periodo = validarPeriodoOpcional({ checkin: texto('checkin'), checkout: texto('checkout'), hoje });
 
   return {
-    filtros: { cidade, tipo, hospedes, precoMin, precoMax, servicos, ...periodo },
+    filtros: { cidade, tipo, hospedes, precoMin, precoMax, servicos, comInclusos, ...periodo },
     pagina,
   };
 }

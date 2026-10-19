@@ -131,6 +131,33 @@ class ErroCapacidadeExcedida extends ErroDominio {
   }
 }
 
+// RN17. Também usado quando o incluso é de outro imóvel
+class ErroServicoInclusoNaoEncontrado extends ErroDominio {
+  constructor() {
+    super('SERVICO_INCLUSO_NAO_ENCONTRADO', 'Serviço incluso não encontrado');
+  }
+}
+
+class ErroLimiteInclusos extends ErroDominio {
+  constructor(limite) {
+    super('LIMITE_INCLUSOS', `Limite de ${limite} serviços inclusos por imóvel`, { limite });
+  }
+}
+
+// FK RESTRICT de reserva_inclusos: o histórico das reservas precisa do incluso
+class ErroServicoInclusoContratado extends ErroDominio {
+  constructor() {
+    super('SERVICO_INCLUSO_CONTRATADO', 'Este serviço já foi contratado em reservas. Desative-o em vez de remover');
+  }
+}
+
+// RN21: incluso inativo, de outro imóvel ou inexistente no pedido de reserva
+class ErroServicoInclusoIndisponivel extends ErroDominio {
+  constructor(inclusoId) {
+    super('SERVICO_INCLUSO_INDISPONIVEL', 'Este serviço incluso não está mais disponível', { incluso_id: inclusoId });
+  }
+}
+
 // Também usada quando a reserva é de outro hóspede: não revela que ela existe
 class ErroReservaNaoEncontrada extends ErroDominio {
   constructor() {
@@ -208,6 +235,10 @@ module.exports = {
   ErroDataServicoForaDaEstadia,
   ErroServicoIndisponivel,
   ErroCapacidadeExcedida,
+  ErroServicoInclusoNaoEncontrado,
+  ErroLimiteInclusos,
+  ErroServicoInclusoContratado,
+  ErroServicoInclusoIndisponivel,
   ErroReservaNaoEncontrada,
   ErroReservaNaoPendente,
   ErroTransicaoStatusInvalida,
