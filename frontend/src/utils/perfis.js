@@ -22,7 +22,8 @@ export const TIPOS_IMOVEL = [
   { valor: 'cobertura', rotulo: 'Coberturas' },
   { valor: 'apartamento', rotulo: 'Apartamentos' },
   { valor: 'chale', rotulo: 'Chalés' },
-  { valor: 'fazenda', rotulo: 'Sítios' },
+  { valor: 'sitio', rotulo: 'Sítios' },
+  { valor: 'fazenda', rotulo: 'Fazendas' },
 ];
 
 export const ROTULO_TIPO_IMOVEL = {
@@ -31,8 +32,37 @@ export const ROTULO_TIPO_IMOVEL = {
   cobertura: 'Cobertura',
   apartamento: 'Apartamento',
   chale: 'Chalé',
-  fazenda: 'Sítio',
+  sitio: 'Sítio',
+  fazenda: 'Fazenda',
 };
+
+// RN17: serviços inclusos do próprio anfitrião (valores do CHECK da migração 002)
+export const UNIDADES_INCLUSO = [
+  { valor: 'noite', rotulo: 'Por noite' },
+  { valor: 'hospede', rotulo: 'Por hóspede' },
+  { valor: 'estadia', rotulo: 'Valor fixo por estadia' },
+];
+
+export const ROTULO_UNIDADE_INCLUSO = { noite: 'noite', hospede: 'hóspede', estadia: 'estadia' };
+
+// Atalhos do painel: um clique preenche nome, cobrança e descrição; o anfitrião só informa o preço
+export const SUGESTOES_INCLUSOS = [
+  { nome: 'Caseiro', unidade_preco: 'noite', descricao: 'Cuida da casa e do jardim durante a estadia.' },
+  { nome: 'Limpeza diária', unidade_preco: 'noite', descricao: 'Arrumação dos quartos e das áreas comuns todos os dias.' },
+  { nome: 'Café da manhã', unidade_preco: 'hospede', descricao: 'Servido todas as manhãs.' },
+  { nome: 'Enxoval de cama e banho', unidade_preco: 'estadia', descricao: 'Lençóis, toalhas de banho e de piscina.' },
+  { nome: 'Lenha', unidade_preco: 'estadia', descricao: 'Para a lareira, a churrasqueira ou o fogão a lenha.' },
+  { nome: 'Piscineiro', unidade_preco: 'estadia', descricao: 'Limpeza e tratamento da piscina.' },
+];
+
+const UNIDADE_INCLUSO_NO_PLURAL = { noite: ['noite', 'noites'], hospede: ['hóspede', 'hóspedes'] };
+
+// Ex.: { preco: 15000, unidade_preco: 'noite' }, 3 → "R$ 150 × 3 noites"; estadia → "valor fixo"
+export function descreverCobrancaIncluso(unidadePreco, quantidade, precoFormatado) {
+  if (unidadePreco === 'estadia') return 'valor fixo';
+  const [singular, plural] = UNIDADE_INCLUSO_NO_PLURAL[unidadePreco];
+  return `${precoFormatado} × ${quantidade} ${quantidade === 1 ? singular : plural}`;
+}
 
 export const TIPOS_SERVICO = [
   { valor: 'mordomo', rotulo: 'Mordomo' },

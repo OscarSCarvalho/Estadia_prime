@@ -10,6 +10,7 @@ function ConteudoFiltros({ filtros, aoAplicar, aoFechar }) {
   const [precoMin, setPrecoMin] = useState(centavosParaReais(filtros.precoMin));
   const [precoMax, setPrecoMax] = useState(centavosParaReais(filtros.precoMax));
   const [servicos, setServicos] = useState(filtros.servicos ?? []);
+  const [comInclusos, setComInclusos] = useState(Boolean(filtros.comInclusos));
 
   function alternarServico(valor) {
     setServicos((atuais) => (atuais.includes(valor) ? atuais.filter((s) => s !== valor) : [...atuais, valor]));
@@ -17,7 +18,12 @@ function ConteudoFiltros({ filtros, aoAplicar, aoFechar }) {
 
   function aplicar(evento) {
     evento.preventDefault();
-    aoAplicar({ precoMin: reaisParaCentavos(precoMin), precoMax: reaisParaCentavos(precoMax), servicos });
+    aoAplicar({
+      precoMin: reaisParaCentavos(precoMin),
+      precoMax: reaisParaCentavos(precoMax),
+      servicos,
+      comInclusos: comInclusos ? '1' : '',
+    });
     aoFechar();
   }
 
@@ -25,6 +31,7 @@ function ConteudoFiltros({ filtros, aoAplicar, aoFechar }) {
     setPrecoMin('');
     setPrecoMax('');
     setServicos([]);
+    setComInclusos(false);
   }
 
   const campoPreco =
@@ -46,6 +53,26 @@ function ConteudoFiltros({ filtros, aoAplicar, aoFechar }) {
               <input type="number" min="0" step="50" inputMode="numeric" placeholder="Sem limite" value={precoMax} onChange={(e) => setPrecoMax(e.target.value)} className={`mt-1 ${campoPreco}`} />
             </label>
           </div>
+        </fieldset>
+
+        <fieldset className="mt-8 border-t border-linha pt-8">
+          <legend className="font-titulo text-2xl font-semibold">Serviços inclusos</legend>
+          <label
+            className={`mt-4 flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ouro-escuro ${
+              comInclusos ? 'border-tinta bg-areia' : 'border-linha hover:border-grafite'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={comInclusos}
+              onChange={(evento) => setComInclusos(evento.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-tinta"
+            />
+            <span>
+              <span className="block font-medium">Só imóveis com serviços inclusos</span>
+              <span className="text-grafite">Caseiro, limpeza, café da manhã e outros oferecidos pelo próprio anfitrião.</span>
+            </span>
+          </label>
         </fieldset>
 
         <fieldset className="mt-8 border-t border-linha pt-8">
@@ -86,7 +113,8 @@ function ConteudoFiltros({ filtros, aoAplicar, aoFechar }) {
 export default function DialogoFiltros({ filtros, aoAplicar }) {
   const referencia = useRef(null);
   const [aberto, setAberto] = useState(false);
-  const quantidadeAtivos = (filtros.precoMin ? 1 : 0) + (filtros.precoMax ? 1 : 0) + (filtros.servicos?.length ?? 0);
+  const quantidadeAtivos =
+    (filtros.precoMin ? 1 : 0) + (filtros.precoMax ? 1 : 0) + (filtros.comInclusos ? 1 : 0) + (filtros.servicos?.length ?? 0);
 
   function abrir() {
     setAberto(true);

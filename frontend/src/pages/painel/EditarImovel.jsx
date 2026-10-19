@@ -6,6 +6,7 @@ import Icone from '../../components/Icone.jsx';
 import { PainelCarregando } from '../../components/Esqueletos.jsx';
 import FormularioImovel from '../../components/painel/FormularioImovel.jsx';
 import GerenciadorFotos from '../../components/painel/GerenciadorFotos.jsx';
+import GerenciadorInclusos from '../../components/painel/GerenciadorInclusos.jsx';
 import SeloStatus from '../../components/painel/SeloStatus.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { useTituloPagina } from '../../hooks/useTituloPagina.js';
@@ -117,6 +118,10 @@ function PainelImovel({ inicial, recemCadastrado }) {
           fotos={imovel.fotos}
           aoMudar={(fotos) => setImovel((atual) => ({ ...atual, fotos }))}
         />
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-linha bg-white p-6 sm:p-8">
+        <GerenciadorInclusos imovelId={imovel.id} />
       </div>
 
       <section className="mt-8 rounded-2xl border border-linha bg-white p-6 sm:p-8" aria-labelledby="titulo-dados">

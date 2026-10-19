@@ -1,14 +1,16 @@
 // Reservas: o hóspede cria e acompanha; anfitrião e prestador consultam as suas
 import { api } from './api.js';
 
-// `itens` do carrinho: [{ servico_id, data_servico, quantidade }]. Preços não vão: a API recalcula pelo banco
-export async function criarReserva({ imovelId, checkin, checkout, hospedes, itens }) {
+// `itens` do carrinho: [{ servico_id, data_servico, quantidade }]; `inclusos`: ids dos inclusos que o hóspede
+// manteve marcados (RN18). Preços não vão: a API recalcula pelo banco
+export async function criarReserva({ imovelId, checkin, checkout, hospedes, itens, inclusos }) {
   const { reserva } = await api.post('/reservas', {
     imovel_id: imovelId,
     checkin,
     checkout,
     num_hospedes: hospedes,
     servicos: itens.map(({ servico_id, data_servico, quantidade }) => ({ servico_id, data_servico, quantidade })),
+    inclusos,
   });
   return reserva;
 }

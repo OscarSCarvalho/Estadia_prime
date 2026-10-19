@@ -60,8 +60,16 @@ export function manterItensValidos(itens, servicos, dias) {
   });
 }
 
-// RN01 (noites × diária) e RN02 (preço × quantidade). O total é a soma das duas partes (H5.3)
-export function calcularResumo({ precoDiaria, noites, itens, servicos }) {
+// RN17: estadia = valor fixo; noite = preço × noites; hospede = preço × nº de hóspedes (mesma regra da API)
+export function quantidadeDoIncluso(unidadePreco, { noites, hospedes }) {
+  if (unidadePreco === 'noite') return noites;
+  if (unidadePreco === 'hospede') return hospedes;
+  return 1;
+}
+
+// RN01 (noites × diária), RN02 (preço × quantidade) e RN17 (inclusos mantidos pelo hóspede).
+// O total é a soma das três partes: hospedagem, serviços inclusos e serviços premium (H5.3)
+export function calcularResumo({ precoDiaria, noites, hospedes, itens, servicos, inclusos = [] }) {
   const servicosPorId = new Map(servicos.map((servico) => [servico.id, servico]));
   const linhasServicos = itens
     .map((item) => {
@@ -70,7 +78,20 @@ export function calcularResumo({ precoDiaria, noites, itens, servicos }) {
     })
     .sort((a, b) => a.data_servico.localeCompare(b.data_servico) || a.servico.prestador.localeCompare(b.servico.prestador));
 
+  const linhasInclusos = inclusos.map((incluso) => {
+    const quantidade = quantidadeDoIncluso(incluso.unidade_preco, { noites, hospedes });
+    return { incluso, quantidade, valor: incluso.preco * quantidade };
+  });
+
   const valorHospedagem = precoDiaria * noites;
+  const valorInclusos = linhasInclusos.reduce((soma, linha) => soma + linha.valor, 0);
   const valorServicos = linhasServicos.reduce((soma, linha) => soma + linha.valor, 0);
-  return { valorHospedagem, linhasServicos, valorServicos, valorTotal: valorHospedagem + valorServicos };
+  return {
+    valorHospedagem,
+    linhasInclusos,
+    valorInclusos,
+    linhasServicos,
+    valorServicos,
+    valorTotal: valorHospedagem + valorInclusos + valorServicos,
+  };
 }

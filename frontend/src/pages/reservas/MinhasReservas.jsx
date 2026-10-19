@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import Icone from '../../components/Icone.jsx';
 import AvaliarEstadia from '../../components/avaliacoes/AvaliarEstadia.jsx';
-import { CabecalhoPagina, ConteudoLista, ItensReserva, PeriodoReserva, SeloReserva } from '../../components/reservas/PartesReserva.jsx';
+import {
+  CabecalhoPagina,
+  ConteudoLista,
+  InclusosReserva,
+  ItensReserva,
+  PeriodoReserva,
+  SeloReserva,
+  TituloParte,
+} from '../../components/reservas/PartesReserva.jsx';
 import { useConfirmacao } from '../../hooks/useConfirmacao.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { useTituloPagina } from '../../hooks/useTituloPagina.js';
@@ -92,7 +100,14 @@ function CartaoReserva({ reserva, destacada, aoMudar }) {
           <div className="mt-2">
             <PeriodoReserva reserva={reserva} />
           </div>
+          {reserva.inclusos.length > 0 && (
+            <div className="mt-4">
+              <TituloParte>Serviços inclusos</TituloParte>
+              <InclusosReserva inclusos={reserva.inclusos} />
+            </div>
+          )}
           <div className="mt-4">
+            {reserva.inclusos.length > 0 && <TituloParte>Serviços premium</TituloParte>}
             <ItensReserva itens={reserva.itens} />
           </div>
         </div>
@@ -103,9 +118,15 @@ function CartaoReserva({ reserva, destacada, aoMudar }) {
           <dt className="text-grafite">Hospedagem</dt>
           <dd>{formatarMoeda(reserva.valor_hospedagem)}</dd>
         </div>
+        {reserva.valor_inclusos > 0 && (
+          <div className="flex justify-between">
+            <dt className="text-grafite">Serviços inclusos</dt>
+            <dd>{formatarMoeda(reserva.valor_inclusos)}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
-          <dt className="text-grafite">Serviços</dt>
-          <dd>{formatarMoeda(reserva.valor_servicos)}</dd>
+          <dt className="text-grafite">Serviços premium</dt>
+          <dd>{formatarMoeda(reserva.valor_servicos_premium)}</dd>
         </div>
         <div className="flex justify-between font-semibold">
           <dt>Total</dt>

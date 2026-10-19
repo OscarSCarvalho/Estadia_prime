@@ -1,5 +1,13 @@
 import { Link } from 'react-router';
-import { CabecalhoPagina, ConteudoLista, ItensReserva, PeriodoReserva, SeloReserva } from '../../components/reservas/PartesReserva.jsx';
+import {
+  CabecalhoPagina,
+  ConteudoLista,
+  InclusosReserva,
+  ItensReserva,
+  PeriodoReserva,
+  SeloReserva,
+  TituloParte,
+} from '../../components/reservas/PartesReserva.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { listarReservasRecebidas } from '../../services/reservas.js';
@@ -23,9 +31,15 @@ function CartaoReservaRecebida({ reserva }) {
           <div className="mt-2">
             <PeriodoReserva reserva={reserva} />
           </div>
+          {reserva.inclusos.length > 0 && (
+            <div className="mt-4">
+              <TituloParte>Seus serviços inclusos</TituloParte>
+              <InclusosReserva inclusos={reserva.inclusos} />
+            </div>
+          )}
           {reserva.itens.length > 0 && (
             <div className="mt-4">
-              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-grafite">Serviços contratados no imóvel</p>
+              <TituloParte>Serviços premium contratados no imóvel</TituloParte>
               <ItensReserva itens={reserva.itens} />
             </div>
           )}
@@ -35,9 +49,15 @@ function CartaoReservaRecebida({ reserva }) {
             <dt className="text-grafite">Hospedagem</dt>
             <dd>{formatarMoeda(reserva.valor_hospedagem)}</dd>
           </div>
+          {reserva.valor_inclusos > 0 && (
+            <div>
+              <dt className="text-grafite">Serviços inclusos</dt>
+              <dd>{formatarMoeda(reserva.valor_inclusos)}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-grafite">Você recebe</dt>
-            <dd className="text-lg font-semibold">{formatarMoeda(reserva.repasse_hospedagem)}</dd>
+            <dd className="text-lg font-semibold">{formatarMoeda(reserva.repasse_anfitriao)}</dd>
           </div>
         </dl>
       </div>
@@ -57,7 +77,7 @@ export default function ReservasRecebidas() {
         </Link>
       </CabecalhoPagina>
       <p className="mt-3 text-grafite">
-        O valor da hospedagem, já descontada a comissão, é repassado 24 horas depois do check-in.
+        O valor da hospedagem e dos seus serviços inclusos, já descontada a comissão, é repassado 24 horas depois do check-in.
       </p>
 
       <div className="mt-8">

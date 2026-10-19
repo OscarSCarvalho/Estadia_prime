@@ -32,7 +32,7 @@ export async function listarCidades() {
 
 // Os filtros da tela guardam a diária em centavos; a API recebe em reais, como no cadastro
 export async function buscarImoveis(filtros = {}) {
-  const { cidade, checkin, checkout, hospedes, tipo, precoMin, precoMax, servicos = [], pagina } = filtros;
+  const { cidade, checkin, checkout, hospedes, tipo, precoMin, precoMax, servicos = [], comInclusos, pagina } = filtros;
   return api.get(
     `/imoveis${consulta({
       cidade,
@@ -43,6 +43,7 @@ export async function buscarImoveis(filtros = {}) {
       preco_min: precoMin ? precoMin / 100 : '',
       preco_max: precoMax ? precoMax / 100 : '',
       servicos: servicos.join(','),
+      com_inclusos: comInclusos ? 1 : '',
       pagina: pagina > 1 ? pagina : '',
     })}`,
   );
@@ -50,7 +51,8 @@ export async function buscarImoveis(filtros = {}) {
 
 export async function obterImovel(id) {
   const detalhe = await nuloSeNaoEncontrado(api.get(`/imoveis/${encodeURIComponent(id)}`));
-  return detalhe && { imovel: detalhe.imovel, servicos: detalhe.servicos.map(comFoto) };
+  // `inclusos`: serviços do próprio anfitrião, ativos e na ordem dele (RN17)
+  return detalhe && { imovel: detalhe.imovel, inclusos: detalhe.inclusos, servicos: detalhe.servicos.map(comFoto) };
 }
 
 // Sem as duas datas não há o que verificar. Período inválido (passado, invertido) fica para

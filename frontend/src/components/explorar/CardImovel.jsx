@@ -43,6 +43,13 @@ export default function CardImovel({ imovel, periodo = {} }) {
           {imovel.num_hospedes} hóspedes · {imovel.num_quartos} {imovel.num_quartos === 1 ? 'quarto' : 'quartos'}
         </p>
 
+        {imovel.qtd_inclusos > 0 && (
+          <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-areia px-2.5 py-0.5 text-xs font-medium text-tinta">
+            <Icone nome="incluso" tamanho={14} className="text-ouro-escuro" />
+            Com serviços inclusos
+          </p>
+        )}
+
         {imovel.servicos_disponiveis.length > 0 && (
           <p className="mt-1.5 flex items-center gap-1.5 text-ouro-escuro">
             {imovel.servicos_disponiveis.map((tipo) => (

@@ -2,7 +2,7 @@ import Icone from '../Icone.jsx';
 import ErroCarregamento from '../ErroCarregamento.jsx';
 import EstadoVazio from '../EstadoVazio.jsx';
 import { ListaCarregando } from '../Esqueletos.jsx';
-import { STATUS_RESERVA, ROTULO_TIPO_SERVICO, descreverQuantidade } from '../../utils/perfis.js';
+import { STATUS_RESERVA, ROTULO_TIPO_SERVICO, descreverCobrancaIncluso, descreverQuantidade } from '../../utils/perfis.js';
 import { formatarDataComAno, formatarDiaDaSemana, formatarMoeda } from '../../utils/formatacao.js';
 
 export function SeloReserva({ status }) {
@@ -47,6 +47,33 @@ export function ItensReserva({ itens }) {
       ))}
     </ul>
   );
+}
+
+// RN18: inclusos do anfitrião que o hóspede manteve, com nome e preço congelados na reserva
+export function InclusosReserva({ inclusos }) {
+  return (
+    <ul className="space-y-1.5 text-sm">
+      {inclusos.map((incluso) => (
+        <li key={incluso.id} className="flex justify-between gap-3">
+          <span className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Icone nome="incluso" tamanho={15} className="text-ouro-escuro" />
+              {incluso.nome}
+            </span>
+            <span className="text-grafite">
+              {' '}
+              · {descreverCobrancaIncluso(incluso.unidade_preco, incluso.quantidade, formatarMoeda(incluso.preco_contratado))}
+            </span>
+          </span>
+          <span className="shrink-0">{formatarMoeda(incluso.subtotal)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function TituloParte({ children }) {
+  return <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-grafite">{children}</p>;
 }
 
 // Carregando / erro / vazio / lista: o mesmo esqueleto nas três telas de reservas.

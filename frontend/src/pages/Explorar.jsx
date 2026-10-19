@@ -28,6 +28,7 @@ function lerFiltros(parametros) {
     precoMin: numero('precoMin'),
     precoMax: numero('precoMax'),
     servicos: (parametros.get('servicos') ?? '').split(',').filter(Boolean),
+    comInclusos: parametros.get('comInclusos') === '1',
     tipoServico: parametros.get('tipoServico') ?? '',
     pagina: numero('pagina') || 1,
   };

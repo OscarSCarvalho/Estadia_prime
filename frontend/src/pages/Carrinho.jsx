@@ -19,9 +19,16 @@ import {
   diasDaEstadia,
   manterItensValidos,
   problemaNaEstadia,
+  quantidadeDoIncluso,
   removerItem,
 } from '../utils/carrinho.js';
-import { ROTULO_TIPO_IMOVEL, ROTULO_TIPO_SERVICO, ROTULO_UNIDADE_PRECO } from '../utils/perfis.js';
+import {
+  ROTULO_TIPO_IMOVEL,
+  ROTULO_TIPO_SERVICO,
+  ROTULO_UNIDADE_INCLUSO,
+  ROTULO_UNIDADE_PRECO,
+  descreverCobrancaIncluso,
+} from '../utils/perfis.js';
 import { formatarDataCurta, formatarDiaDaSemana, formatarMoeda, hojeIso } from '../utils/formatacao.js';
 
 const SOMBRA_CARTAO = 'shadow-[0_6px_20px_rgba(28,27,31,0.10)]';
@@ -165,6 +172,57 @@ function ServicoParaAdicionar({ servico, dias, aoAdicionar }) {
   );
 }
 
+// RN18: todos os inclusos ativos chegam marcados; desmarcar tira o valor do total na hora
+function InclusosDoAnfitriao({ inclusos, retirados, noites, hospedes, aoAlternar }) {
+  return (
+    <section aria-labelledby="titulo-inclusos" className="mb-12 border-b border-linha pb-12">
+      <h2 id="titulo-inclusos" className="font-titulo text-3xl font-semibold">
+        Serviços inclusos
+      </h2>
+      <p className="mt-1 text-grafite">
+        Oferecidos pelo próprio anfitrião e já incluídos na sua estadia. Desmarque o que não quiser: o total muda na hora.
+      </p>
+      <ul className="mt-6 space-y-3">
+        {inclusos.map((incluso) => {
+          const marcado = !retirados.includes(incluso.id);
+          const quantidade = quantidadeDoIncluso(incluso.unidade_preco, { noites, hospedes });
+          const precoFormatado = formatarMoeda(incluso.preco);
+          return (
+            <li key={incluso.id}>
+              <label
+                className={`flex cursor-pointer gap-4 rounded-2xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ouro-escuro sm:p-5 ${
+                  marcado ? 'border-tinta bg-areia/50' : 'border-linha hover:border-grafite'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={marcado}
+                  onChange={() => aoAlternar(incluso.id)}
+                  className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-tinta"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-4">
+                    <span className="font-semibold">{incluso.nome}</span>
+                    <span className={`font-semibold tabular-nums ${marcado ? '' : 'text-grafite line-through'}`}>
+                      {formatarMoeda(incluso.preco * quantidade)}
+                    </span>
+                  </span>
+                  {incluso.descricao && <span className="mt-0.5 block text-sm text-grafite">{incluso.descricao}</span>}
+                  <span className="mt-1 block text-sm text-grafite">
+                    {precoFormatado} / {ROTULO_UNIDADE_INCLUSO[incluso.unidade_preco]} ·{' '}
+                    {descreverCobrancaIncluso(incluso.unidade_preco, quantidade, precoFormatado)}
+                    {!marcado && <span className="text-ouro-escuro"> · retirado</span>}
+                  </span>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function LinhaServico({ linha, aoMudarQuantidade, aoRemover }) {
   const { servico } = linha;
   const nome = `${ROTULO_TIPO_SERVICO[servico.tipo_servico]} em ${formatarDiaDaSemana(linha.data_servico)}`;
@@ -210,6 +268,7 @@ function Resumo({
   hospedes,
   noites,
   resumo,
+  temInclusos,
   linkImovel,
   enviando,
   aviso,
@@ -261,6 +320,29 @@ function Resumo({
         </p>
       </section>
 
+      {temInclusos && (
+        <section aria-labelledby="titulo-inclusos-carrinho" className="border-b border-linha py-5">
+          <h2 id="titulo-inclusos-carrinho" className="font-semibold">
+            Serviços inclusos
+          </h2>
+          {resumo.linhasInclusos.length === 0 ? (
+            <p className="mt-2 text-sm text-grafite">Você retirou todos os serviços inclusos.</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {resumo.linhasInclusos.map(({ incluso, quantidade, valor }) => (
+                <li key={incluso.id} className="flex justify-between gap-3 text-grafite">
+                  <span className="min-w-0">
+                    {incluso.nome}
+                    {incluso.unidade_preco !== 'estadia' && <span> · {descreverCobrancaIncluso(incluso.unidade_preco, quantidade, formatarMoeda(incluso.preco))}</span>}
+                  </span>
+                  <span className="shrink-0">{formatarMoeda(valor)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       <section aria-labelledby="titulo-servicos-carrinho" className="border-b border-linha py-5">
         <h2 id="titulo-servicos-carrinho" className="font-semibold">
           Serviços premium
@@ -286,8 +368,14 @@ function Resumo({
           <dt className="text-grafite">Hospedagem</dt>
           <dd>{formatarMoeda(resumo.valorHospedagem)}</dd>
         </div>
+        {temInclusos && (
+          <div className="flex justify-between">
+            <dt className="text-grafite">Serviços inclusos</dt>
+            <dd>{formatarMoeda(resumo.valorInclusos)}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
-          <dt className="text-grafite">Serviços</dt>
+          <dt className="text-grafite">Serviços premium</dt>
           <dd>{formatarMoeda(resumo.valorServicos)}</dd>
         </div>
         <div className="flex justify-between border-t border-linha pt-3 text-base font-semibold">
@@ -326,8 +414,9 @@ function Resumo({
 }
 
 // Mensagem para cada recusa da API ao confirmar. `item`: o serviço/dia que causou a recusa, se houver
-function avisoDaRecusa(erro, { linkImovel, servicos }) {
+function avisoDaRecusa(erro, { linkImovel, servicos, inclusos }) {
   const item = erro.detalhes ?? {};
+  const incluso = inclusos.find((opcao) => opcao.id === item.incluso_id);
   const servico = servicos.find((opcao) => opcao.id === item.servico_id);
   const nomeServico = servico ? `${ROTULO_TIPO_SERVICO[servico.tipo_servico]} (${servico.prestador})` : 'Um serviço';
   switch (erro.codigo) {
@@ -339,6 +428,10 @@ function avisoDaRecusa(erro, { linkImovel, servicos }) {
       };
     case 'SERVICO_INDISPONIVEL':
       return { texto: `${nomeServico} não está mais disponível. Tiramos esse serviço do carrinho.` };
+    case 'SERVICO_INCLUSO_INDISPONIVEL':
+      return {
+        texto: `O anfitrião deixou de oferecer ${incluso ? `"${incluso.nome}"` : 'um dos serviços inclusos'}. Tiramos esse serviço do carrinho e o total foi atualizado: confira e confirme de novo.`,
+      };
     case 'NAO_AUTENTICADO':
       return { texto: 'Sua sessão terminou. Entre de novo para confirmar.', link: '/entrar', rotuloLink: 'Entrar' };
     default:
@@ -346,22 +439,45 @@ function avisoDaRecusa(erro, { linkImovel, servicos }) {
   }
 }
 
-function MontagemCarrinho({ chave, imovel, servicos: servicosCarregados, checkin, checkout, hospedes, linkImovel }) {
+function MontagemCarrinho({
+  chave,
+  imovel,
+  inclusos: inclusosCarregados,
+  servicos: servicosCarregados,
+  checkin,
+  checkout,
+  hospedes,
+  linkImovel,
+}) {
   const navegar = useNavigate();
   const dias = diasDaEstadia(checkin, checkout);
   const noites = dias.length - 1;
-  // Recusas da API (prestador contratado por outra pessoa, serviço desativado) atualizam esta lista na hora
+  const [salvo] = useState(() => lerCarrinho(chave));
+  // Recusas da API (prestador contratado por outra pessoa, serviço desativado) atualizam estas listas na hora
   const [servicos, setServicos] = useState(servicosCarregados);
-  const [itens, setItens] = useState(() => manterItensValidos(lerCarrinho(chave), servicosCarregados, dias));
+  const [inclusos, setInclusos] = useState(inclusosCarregados);
+  const [itens, setItens] = useState(() => manterItensValidos(salvo.itens, servicosCarregados, dias));
+  const [retirados, setRetirados] = useState(salvo.inclusosRetirados);
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState(null);
-  const resumo = calcularResumo({ precoDiaria: imovel.preco_diaria, noites, itens, servicos });
+  const mantidos = inclusos.filter((incluso) => !retirados.includes(incluso.id));
+  const resumo = calcularResumo({ precoDiaria: imovel.preco_diaria, noites, hospedes, itens, servicos, inclusos: mantidos });
+
+  function guardar(mudancas) {
+    salvarCarrinho(chave, { itens, inclusosRetirados: retirados, ...mudancas });
+    setAviso(null);
+  }
 
   function atualizarItens(alterar) {
     const novos = alterar(itens);
     setItens(novos);
-    salvarCarrinho(chave, novos);
-    setAviso(null);
+    guardar({ itens: novos });
+  }
+
+  function alternarIncluso(inclusoId) {
+    const novos = retirados.includes(inclusoId) ? retirados.filter((id) => id !== inclusoId) : [...retirados, inclusoId];
+    setRetirados(novos);
+    guardar({ inclusosRetirados: novos });
   }
 
   function tirarDoCarrinho(erro) {
@@ -376,6 +492,8 @@ function MontagemCarrinho({ chave, imovel, servicos: servicosCarregados, checkin
     } else if (erro.codigo === 'SERVICO_INDISPONIVEL') {
       setServicos((atuais) => atuais.filter((servico) => servico.id !== servicoId));
       atualizarItens((atuais) => atuais.filter((item) => item.servico_id !== servicoId));
+    } else if (erro.codigo === 'SERVICO_INCLUSO_INDISPONIVEL') {
+      setInclusos((atuais) => atuais.filter((incluso) => incluso.id !== erro.detalhes.incluso_id));
     }
   }
 
@@ -383,12 +501,19 @@ function MontagemCarrinho({ chave, imovel, servicos: servicosCarregados, checkin
     setEnviando(true);
     setAviso(null);
     try {
-      const reserva = await criarReserva({ imovelId: imovel.id, checkin, checkout, hospedes, itens });
-      salvarCarrinho(chave, []);
+      const reserva = await criarReserva({
+        imovelId: imovel.id,
+        checkin,
+        checkout,
+        hospedes,
+        itens,
+        inclusos: mantidos.map((incluso) => incluso.id),
+      });
+      salvarCarrinho(chave);
       navegar('/minhas-reservas', { state: { reservaCriada: reserva.id } });
     } catch (erro) {
       tirarDoCarrinho(erro);
-      setAviso(avisoDaRecusa(erro, { linkImovel, servicos }));
+      setAviso(avisoDaRecusa(erro, { linkImovel, servicos, inclusos }));
       setEnviando(false);
     }
   }
@@ -400,33 +525,47 @@ function MontagemCarrinho({ chave, imovel, servicos: servicosCarregados, checkin
           <Icone nome="anterior" tamanho={16} /> Voltar ao imóvel
         </Link>
         <h1 className="mt-4 font-titulo text-4xl font-semibold sm:text-5xl">Monte sua estadia</h1>
-        <p className="mt-2 text-grafite">Adicione serviços premium e confira o total antes de pagar.</p>
+        <p className="mt-2 text-grafite">
+          {inclusos.length > 0 ? 'Confira os serviços inclusos, adicione serviços premium' : 'Adicione serviços premium'} e veja o
+          total antes de pagar.
+        </p>
 
         <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_26rem]">
-          <section aria-labelledby="titulo-servicos-estadia">
-            <h2 id="titulo-servicos-estadia" className="font-titulo text-3xl font-semibold">
-              Serviços em {imovel.cidade}
-            </h2>
-            <p className="mt-1 text-grafite">
-              Escolha o dia e a quantidade. O serviço pode ser no dia do check-in, do check-out ou entre eles.
-            </p>
-            {servicos.length > 0 ? (
-              <ul className="mt-6 space-y-4">
-                {servicos.map((servico) => (
-                  <ServicoParaAdicionar
-                    key={servico.id}
-                    servico={servico}
-                    dias={dias}
-                    aoAdicionar={(item) => atualizarItens((atuais) => adicionarItem(atuais, item))}
-                  />
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-6 text-grafite">
-                Ainda não há prestadores em {imovel.cidade}. Você pode seguir só com a hospedagem.
-              </p>
+          <div>
+            {inclusos.length > 0 && (
+              <InclusosDoAnfitriao
+                inclusos={inclusos}
+                retirados={retirados}
+                noites={noites}
+                hospedes={hospedes}
+                aoAlternar={alternarIncluso}
+              />
             )}
-          </section>
+            <section aria-labelledby="titulo-servicos-estadia">
+              <h2 id="titulo-servicos-estadia" className="font-titulo text-3xl font-semibold">
+                Serviços em {imovel.cidade}
+              </h2>
+              <p className="mt-1 text-grafite">
+                Escolha o dia e a quantidade. O serviço pode ser no dia do check-in, do check-out ou entre eles.
+              </p>
+              {servicos.length > 0 ? (
+                <ul className="mt-6 space-y-4">
+                  {servicos.map((servico) => (
+                    <ServicoParaAdicionar
+                      key={servico.id}
+                      servico={servico}
+                      dias={dias}
+                      aoAdicionar={(item) => atualizarItens((atuais) => adicionarItem(atuais, item))}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-6 text-grafite">
+                  Ainda não há prestadores em {imovel.cidade}. Você pode seguir só com a hospedagem.
+                </p>
+              )}
+            </section>
+          </div>
 
           <aside className="lg:sticky lg:top-6 lg:self-start">
             <Resumo
@@ -436,6 +575,7 @@ function MontagemCarrinho({ chave, imovel, servicos: servicosCarregados, checkin
               hospedes={hospedes}
               noites={noites}
               resumo={resumo}
+              temInclusos={inclusos.length > 0}
               linkImovel={linkImovel}
               enviando={enviando}
               aviso={aviso}
@@ -451,7 +591,8 @@ function MontagemCarrinho({ chave, imovel, servicos: servicosCarregados, checkin
         <div>
           <p className="font-semibold">{formatarMoeda(resumo.valorTotal)}</p>
           <p className="text-xs text-grafite">
-            {plural(noites, 'noite', 'noites')} · {plural(resumo.linhasServicos.length, 'serviço', 'serviços')}
+            {plural(noites, 'noite', 'noites')} ·{' '}
+            {plural(resumo.linhasInclusos.length + resumo.linhasServicos.length, 'serviço', 'serviços')}
           </p>
         </div>
         <a href="#resumo" className="rounded-xl bg-tinta px-5 py-3 text-sm font-medium text-marfim">
@@ -532,6 +673,7 @@ export default function Carrinho() {
       key={chave}
       chave={chave}
       imovel={imovel}
+      inclusos={dados.detalhe.inclusos}
       servicos={dados.servicos}
       checkin={checkin}
       checkout={checkout}

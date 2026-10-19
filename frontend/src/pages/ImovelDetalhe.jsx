@@ -12,7 +12,7 @@ import { useAuth } from '../hooks/useAuth.js';
 import { useDados } from '../hooks/useDados.js';
 import { useTituloPagina } from '../hooks/useTituloPagina.js';
 import { obterImovel, verificarDisponibilidade } from '../services/catalogo.js';
-import { ROTULO_TIPO_IMOVEL, ROTULO_TIPO_SERVICO, ROTULO_UNIDADE_PRECO } from '../utils/perfis.js';
+import { ROTULO_TIPO_IMOVEL, ROTULO_TIPO_SERVICO, ROTULO_UNIDADE_INCLUSO, ROTULO_UNIDADE_PRECO } from '../utils/perfis.js';
 import { problemaNaEstadia } from '../utils/carrinho.js';
 import { calcularNoites, formatarMoeda, hojeIso } from '../utils/formatacao.js';
 
@@ -123,7 +123,36 @@ function ServicoDisponivel({ servico }) {
   );
 }
 
-function CartaoReserva({ imovel }) {
+// RN17: serviços do próprio anfitrião. Vêm marcados no carrinho e o hóspede pode retirar (RN18)
+function ServicosInclusos({ inclusos }) {
+  return (
+    <section className="border-b border-linha py-8" aria-labelledby="titulo-inclusos">
+      <h2 id="titulo-inclusos" className="font-titulo text-3xl font-semibold">
+        Serviços inclusos
+      </h2>
+      <p className="mt-1 text-grafite">Oferecidos pelo anfitrião. Você pode retirar o que não quiser no carrinho.</p>
+      <ul className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+        {inclusos.map((incluso) => (
+          <li key={incluso.id} className="flex gap-3">
+            <Icone nome="incluso" tamanho={22} className="mt-0.5 shrink-0 text-ouro-escuro" />
+            <div className="min-w-0 text-sm">
+              <p className="font-semibold">{incluso.nome}</p>
+              {incluso.descricao && <p className="text-grafite">{incluso.descricao}</p>}
+              <p className="mt-0.5">
+                <span className="font-semibold">{formatarMoeda(incluso.preco)}</span>
+                <span className="text-grafite">
+                  {incluso.unidade_preco === 'estadia' ? ' por estadia' : ` / ${ROTULO_UNIDADE_INCLUSO[incluso.unidade_preco]}`}
+                </span>
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function CartaoReserva({ imovel, temInclusos }) {
   const { usuario } = useAuth();
   const navegar = useNavigate();
   const [parametros, setParametros] = useSearchParams();
@@ -231,7 +260,11 @@ function CartaoReserva({ imovel }) {
             <span>Total da hospedagem</span>
             <span>{formatarMoeda(imovel.preco_diaria * noites)}</span>
           </div>
-          <p className="mt-2 text-xs text-grafite">Na próxima tela você adiciona os serviços premium ao carrinho.</p>
+          <p className="mt-2 text-xs text-grafite">
+            {temInclusos
+              ? 'Na próxima tela você confere os serviços inclusos e adiciona os serviços premium.'
+              : 'Na próxima tela você adiciona os serviços premium ao carrinho.'}
+          </p>
         </>
       )}
     </div>
@@ -267,7 +300,7 @@ export default function ImovelDetalhe() {
     );
   }
 
-  const { imovel, servicos } = dados;
+  const { imovel, inclusos, servicos } = dados;
 
   return (
     <div className="bg-white">
@@ -314,9 +347,11 @@ export default function ImovelDetalhe() {
               </section>
             )}
 
+            {inclusos.length > 0 && <ServicosInclusos inclusos={inclusos} />}
+
             <section className="border-b border-linha py-8" aria-labelledby="titulo-servicos-cidade">
               <h2 id="titulo-servicos-cidade" className="font-titulo text-3xl font-semibold">
-                Serviços disponíveis em {imovel.cidade}
+                {inclusos.length > 0 ? 'Serviços premium' : 'Serviços disponíveis'} em {imovel.cidade}
               </h2>
               <p className="mt-1 text-grafite">Contrate junto com a reserva, num único pagamento.</p>
               {servicos.length > 0 ? (
@@ -354,7 +389,7 @@ export default function ImovelDetalhe() {
           </div>
 
           <aside className="lg:sticky lg:top-6 lg:self-start">
-            <CartaoReserva imovel={imovel} />
+            <CartaoReserva imovel={imovel} temInclusos={inclusos.length > 0} />
           </aside>
         </div>
       </article>

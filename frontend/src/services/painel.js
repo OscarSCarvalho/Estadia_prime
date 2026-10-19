@@ -52,6 +52,39 @@ export async function removerFoto(id, fotoId) {
   return fotos;
 }
 
+// RN17: serviços inclusos do imóvel (o painel mostra também os inativos)
+const caminhoInclusos = (id) => `${caminhoImovel(id)}/inclusos`;
+
+export async function listarInclusos(id) {
+  const { inclusos } = await api.get(caminhoInclusos(id));
+  return inclusos;
+}
+
+export async function cadastrarIncluso(id, dados) {
+  const { incluso } = await api.post(caminhoInclusos(id), dados);
+  return incluso;
+}
+
+export async function editarIncluso(id, inclusoId, dados) {
+  const { incluso } = await api.put(`${caminhoInclusos(id)}/${encodeURIComponent(inclusoId)}`, dados);
+  return incluso;
+}
+
+export async function alterarStatusIncluso(id, inclusoId, status) {
+  const { incluso } = await api.patch(`${caminhoInclusos(id)}/${encodeURIComponent(inclusoId)}/status`, { status });
+  return incluso;
+}
+
+export async function reordenarInclusos(id, idsEmOrdem) {
+  const { inclusos } = await api.put(`${caminhoInclusos(id)}/ordem`, { inclusos: idsEmOrdem });
+  return inclusos;
+}
+
+export async function removerIncluso(id, inclusoId) {
+  const { inclusos } = await api.delete(`${caminhoInclusos(id)}/${encodeURIComponent(inclusoId)}`);
+  return inclusos;
+}
+
 export async function listarMeusServicos() {
   const { servicos } = await api.get('/meus-servicos');
   return servicos;
