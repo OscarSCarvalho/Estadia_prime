@@ -64,7 +64,7 @@ db.prepare(`
 
 const tabelas = db.prepare("SELECT count(*) AS total FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'sessoes'").get().total;
 // 8 da Etapa 1 + imovel_servicos_inclusos e reserva_inclusos (migração 002)
-verificar(`10 tabelas de negócio criadas (encontradas: ${tabelas})`, tabelas === 10);
+verificar(`12 tabelas de negócio criadas (encontradas: ${tabelas})`, tabelas === 12);
 verificar('foreign_keys ligado', db.pragma('foreign_keys', { simple: true }) === 1);
 
 const servicosNaCidade = db.prepare("SELECT count(*) AS total FROM servicos WHERE cidade_atuacao = 'Búzios'").get().total;

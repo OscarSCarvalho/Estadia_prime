@@ -132,3 +132,56 @@ test('tabelas dos inclusos: preço > 0, unidade da lista, subtotal = preço × q
   assert.throws(() => db.prepare('DELETE FROM imovel_servicos_inclusos WHERE id = 1').run(), /FOREIGN KEY/);
   db.close();
 });
+
+// Banco como estava antes da 003: a versão 1 acima + a migração 002, com um pagamento já gravado
+test('migração 003 recria pagamentos sem perder dados e cria as tabelas do Asaas', (t) => {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'estadia-migracao-'));
+  t.after(() => fs.rmSync(pasta, { recursive: true, force: true }));
+  const caminho = path.join(pasta, 'versao2.db');
+  criarBancoVersao1(caminho);
+  const versao2 = abrirBancoAteVersao(caminho, 2);
+  versao2.prepare(`
+    INSERT INTO pagamentos (id, reserva_id, valor_total, valor_comissao, status, metodo, id_externo, data_pagamento)
+    VALUES (3, 7, 580000, 72000, 'aprovado', 'pix', 'pi_antigo_1', '2026-08-20 10:00:00')
+  `).run();
+  versao2.close();
+
+  const db = abrirBanco(caminho);
+  assert.equal(db.pragma('user_version', { simple: true }), 3);
+  const pagamento = db.prepare('SELECT * FROM pagamentos').get();
+  assert.deepEqual(
+    { id: pagamento.id, status: pagamento.status, id_externo: pagamento.id_externo, valor_reembolsado: pagamento.valor_reembolsado, taxa_gateway: pagamento.taxa_gateway },
+    { id: 3, status: 'aprovado', id_externo: 'pi_antigo_1', valor_reembolsado: 0, taxa_gateway: null },
+  );
+  assert.equal(db.prepare('SELECT COUNT(*) AS total FROM reserva_servicos WHERE reembolsado = 0').get().total, 1);
+  assert.equal(db.prepare('SELECT repasse_em FROM reservas WHERE id = 7').get().repasse_em, null);
+
+  // Uma única cobrança em aberto por reserva
+  const abrir = db.prepare("INSERT INTO pagamentos (reserva_id, valor_total, valor_comissao, status, metodo) VALUES (7, 580000, 72000, 'pendente', 'pix')");
+  abrir.run();
+  assert.throws(() => abrir.run(), /UNIQUE/);
+
+  // Repasse: um por recebedor e reserva, sempre com valor positivo
+  const repassar = db.prepare("INSERT INTO repasses (reserva_id, usuario_id, tipo, valor) VALUES (7, 1, 'anfitriao', ?)");
+  assert.throws(() => repassar.run(0), /CHECK/);
+  repassar.run(440000);
+  assert.throws(() => repassar.run(440000), /UNIQUE/, 'nunca repassar duas vezes');
+
+  // CPF só com dígitos e com 11 ou 14 deles
+  const documento = db.prepare('UPDATE usuarios SET cpf_cnpj = ? WHERE id = 2');
+  assert.throws(() => documento.run('529.982.247-25'), /CHECK/);
+  documento.run('52998224725');
+  db.close();
+});
+
+// Aplica as migrações só até `versao` (para montar bancos "antigos" nos testes)
+function abrirBancoAteVersao(caminho, versao) {
+  const db = new Database(caminho);
+  for (const migracao of listarMigracoes().filter((m) => m.versao <= versao && m.versao > db.pragma('user_version', { simple: true }))) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(fs.readFileSync(path.join(__dirname, '../../src/db/migracoes', migracao.arquivo), 'utf8'));
+    db.pragma(`user_version = ${migracao.versao}`);
+  }
+  db.pragma('foreign_keys = ON');
+  return db;
+}
