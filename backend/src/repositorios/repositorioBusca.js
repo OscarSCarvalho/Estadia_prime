@@ -10,8 +10,8 @@ const {
 function criarRepositorioBusca(db, { exigirRecebimento = true } = {}) {
   const parametroRecebimento = { exigirRecebimento: exigirRecebimento ? 1 : 0 };
 
-  // H4.1 + H4.2. Disponibilidade (RN04/RN07) e filtro de serviços (json_each: lista de tipos que
-  // TODOS precisam ter prestador visível na cidade do imóvel) ficam no próprio SQL
+  // H4.1 + H4.2. Disponibilidade (RN04/RN07), filtro de serviços (json_each: lista de tipos que
+  // TODOS precisam ter prestador visível na cidade do imóvel) e de inclusos ativos (RN17) ficam no próprio SQL
   const deImoveisFiltrados = `
       FROM imoveis i
       JOIN usuarios u ON u.id = i.anfitriao_id
@@ -21,6 +21,8 @@ function criarRepositorioBusca(db, { exigirRecebimento = true } = {}) {
        AND (@hospedes IS NULL OR i.num_hospedes >= @hospedes)
        AND (@precoMin IS NULL OR i.preco_diaria >= @precoMin)
        AND (@precoMax IS NULL OR i.preco_diaria <= @precoMax)
+       AND (@comInclusos = 0 OR EXISTS (
+             SELECT 1 FROM imovel_servicos_inclusos si WHERE si.imovel_id = i.id AND si.status = 'ativo'))
        AND (@checkin IS NULL OR NOT EXISTS (
              SELECT 1 FROM reservas r
               WHERE r.imovel_id = i.id
@@ -38,6 +40,7 @@ function criarRepositorioBusca(db, { exigirRecebimento = true } = {}) {
   const consultaImoveis = db.prepare(`
     SELECT i.id, i.titulo, i.descricao, i.tipo_imovel, i.cidade, i.estado, i.preco_diaria,
            i.num_hospedes, i.num_quartos, u.nome AS anfitriao,
+           (SELECT COUNT(*) FROM imovel_servicos_inclusos si WHERE si.imovel_id = i.id AND si.status = 'ativo') AS qtd_inclusos,
            ${colunasAvaliacao('imovel', 'i.id')}
     ${deImoveisFiltrados}
      ORDER BY nota_media IS NULL, nota_media DESC, i.id DESC
@@ -97,6 +100,7 @@ function criarRepositorioBusca(db, { exigirRecebimento = true } = {}) {
       hospedes: filtros.hospedes ?? null,
       precoMin: filtros.precoMin ?? null,
       precoMax: filtros.precoMax ?? null,
+      comInclusos: filtros.comInclusos ? 1 : 0,
       checkin: filtros.checkin ?? null,
       checkout: filtros.checkout ?? null,
       servicos: JSON.stringify(filtros.servicos ?? []),

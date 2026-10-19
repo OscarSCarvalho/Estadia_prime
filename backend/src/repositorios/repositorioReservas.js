@@ -14,6 +14,14 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
        AND ${condicaoServicoVisivel('s', 'p')}
   `);
 
+  // RN18/RN21: só inclusos ATIVOS e DESTE imóvel. Os demais ids pedidos ficam fora do resultado
+  const consultaInclusos = db.prepare(`
+    SELECT id, nome, preco, unidade_preco
+      FROM imovel_servicos_inclusos
+     WHERE imovel_id = @imovelId AND status = 'ativo'
+       AND id IN (SELECT value FROM json_each(@ids))
+  `);
+
   // RN06: o mesmo serviço não pode estar em duas reservas ativas no mesmo dia
   const consultaServicoOcupado = db.prepare(`
     SELECT EXISTS (
@@ -42,6 +50,11 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
   const insercaoItem = db.prepare(`
     INSERT INTO reserva_servicos (reserva_id, servico_id, data_servico, quantidade, preco_contratado, valor_comissao)
     VALUES (@reservaId, @servicoId, @data, @quantidade, @precoUnitario, @valorComissao)
+  `);
+  const insercaoIncluso = db.prepare(`
+    INSERT INTO reserva_inclusos (reserva_id, imovel_servico_id, nome_contratado, unidade_preco, quantidade,
+                                  preco_contratado, subtotal, valor_comissao)
+    VALUES (@reservaId, @inclusoId, @nome, @unidadePreco, @quantidade, @precoUnitario, @subtotal, @valorComissao)
   `);
 
   const colunasReserva = `
@@ -82,6 +95,15 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
      ORDER BY rs.data_servico, rs.id
   `);
 
+  const consultaInclusosContratados = db.prepare(`
+    SELECT ri.id, ri.reserva_id, ri.imovel_servico_id, ri.nome_contratado, ri.unidade_preco, ri.quantidade,
+           ri.preco_contratado, ri.subtotal, ri.valor_comissao
+      FROM reserva_inclusos ri
+      JOIN imovel_servicos_inclusos si ON si.id = ri.imovel_servico_id
+     WHERE ri.reserva_id IN (SELECT value FROM json_each(@ids))
+     ORDER BY si.ordem, ri.id
+  `);
+
   // H3.3: cada serviço contratado do prestador, com a reserva a que pertence. Canceladas ficam de fora
   const consultaAgenda = db.prepare(`
     SELECT rs.id, rs.data_servico, rs.quantidade, rs.preco_contratado,
@@ -115,6 +137,12 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
   function servicosParaReserva(ids) {
     const linhas = consultaServicos.all({ ...parametroRecebimento, ids: JSON.stringify(ids) });
     return new Map(linhas.map((servico) => [servico.id, servico]));
+  }
+
+  // Map: id → incluso ativo do imóvel (RN21: inativo, de outro imóvel ou inexistente não entra no Map)
+  function inclusosParaReserva(imovelId, ids) {
+    const linhas = consultaInclusos.all({ imovelId, ids: JSON.stringify(ids) });
+    return new Map(linhas.map((incluso) => [incluso.id, incluso]));
   }
 
   function servicoOcupadoNoDia(servicoId, data) {
@@ -153,15 +181,29 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
         valorComissao: item.valorComissao,
       });
     }
+    for (const incluso of valores.inclusos) {
+      insercaoIncluso.run({
+        reservaId,
+        inclusoId: incluso.inclusoId,
+        nome: incluso.nome,
+        unidadePreco: incluso.unidadePreco,
+        quantidade: incluso.quantidade,
+        precoUnitario: incluso.precoUnitario,
+        subtotal: incluso.subtotal,
+        valorComissao: incluso.valorComissao,
+      });
+    }
     return reservaId;
   }
 
+  // Cada reserva com os serviços premium (`itens`) e os inclusos do anfitrião (`inclusos`) contratados
   function comItens(reservas) {
+    const ids = JSON.stringify(reservas.map((reserva) => reserva.id));
     const itensPorReserva = new Map(reservas.map((reserva) => [reserva.id, []]));
-    for (const item of consultaItens.all({ ids: JSON.stringify(reservas.map((reserva) => reserva.id)) })) {
-      itensPorReserva.get(item.reserva_id).push(item);
-    }
-    return reservas.map((reserva) => ({ ...reserva, itens: itensPorReserva.get(reserva.id) }));
+    const inclusosPorReserva = new Map(reservas.map((reserva) => [reserva.id, []]));
+    for (const item of consultaItens.all({ ids })) itensPorReserva.get(item.reserva_id).push(item);
+    for (const incluso of consultaInclusosContratados.all({ ids })) inclusosPorReserva.get(incluso.reserva_id).push(incluso);
+    return reservas.map((reserva) => ({ ...reserva, itens: itensPorReserva.get(reserva.id), inclusos: inclusosPorReserva.get(reserva.id) }));
   }
 
   function buscarDoHospede(id, hospedeId) {
@@ -194,6 +236,7 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
   return {
     emTransacao,
     servicosParaReserva,
+    inclusosParaReserva,
     servicoOcupadoNoDia,
     diasOcupadosDosServicos,
     inserir,
