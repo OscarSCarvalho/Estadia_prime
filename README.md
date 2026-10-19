@@ -40,6 +40,47 @@ Abra **http://localhost:5173** no navegador.
 | frontend | `npm run lint` | Confere a qualidade do código |
 | frontend | `npm run build` | Gera a versão de produção em `frontend/dist/` |
 
+## Pagamento (Asaas)
+
+Por padrão o projeto usa o **gateway falso** (`GATEWAY_PAGAMENTO=falso`): nenhum dinheiro de verdade, e a tela de pagamento mostra o botão **"Simular pagamento aprovado"**. Os testes automáticos também usam o gateway falso: nenhum deles chama o Asaas.
+
+### Teste manual no sandbox do Asaas (dinheiro de mentira, API de verdade)
+
+> Nunca use a chave de produção no seu computador. O servidor se recusa a iniciar com a URL de produção fora de produção.
+
+1. **Crie a conta sandbox** em https://sandbox.asaas.com (é grátis e separada da conta real).
+2. **Gere a chave da API:** no sandbox, vá em *Integrações → Chaves de API* e crie uma chave. Ela começa com `$aact_hmlg_`.
+3. **Abra um túnel** para o Asaas conseguir chamar o seu computador. Com o backend rodando, num terceiro terminal:
+   ```
+   npx cloudflared tunnel --url http://localhost:3001
+   ```
+   Ele mostra um endereço `https://….trycloudflare.com`. Copie esse endereço.
+4. **Preencha o `backend/.env`:**
+   ```
+   GATEWAY_PAGAMENTO=asaas
+   ASAAS_API_URL=https://api-sandbox.asaas.com/v3
+   ASAAS_API_KEY=$aact_hmlg_...            (a chave do passo 2)
+   ASAAS_WEBHOOK_TOKEN=...                 (32+ caracteres aleatórios, invente)
+   CHAVE_CRIPTOGRAFIA=...                  (gere com o comando abaixo)
+   URL_PUBLICA_SITE=https://….trycloudflare.com   (o endereço do passo 3)
+   ```
+   Para gerar a `CHAVE_CRIPTOGRAFIA`: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+5. **Configure o webhook** no sandbox: *Integrações → Webhooks → Adicionar*.
+   - URL: `https://….trycloudflare.com/api/webhooks/asaas`
+   - Token de autenticação: o mesmo `ASAAS_WEBHOOK_TOKEN`
+   - Versão da API: v3
+   - Eventos: os de **Cobranças** (pelo menos `PAYMENT_CONFIRMED`, `PAYMENT_RECEIVED`, `PAYMENT_REFUNDED`, `PAYMENT_REPROVED_BY_RISK_ANALYSIS`).
+6. **Cadastre uma chave Pix** na conta sandbox (*Pix → Minhas chaves*). Sem ela, o QR do Pix é temporário.
+7. Reinicie o backend (`npm run dev`). A primeira linha deve dizer `(pagamento: asaas)`.
+8. **Teste o fluxo:**
+   - Entre como anfitrião e faça o *Cadastro de recebimento* no painel. No sandbox a subconta é aprovada sozinha em alguns segundos; clique em *Atualizar situação*.
+   - Entre como hóspede, monte o carrinho e clique em *Confirmar reserva*. Informe um CPF válido (de teste) e gere o Pix.
+   - No painel do sandbox, abra a cobrança e use **"Confirmar pagamento"** (simula o Pix pago). Em poucos segundos a tela do site mostra *Pagamento confirmado*.
+   - No cartão, use um cartão de teste do Asaas (veja "Cartões de teste" em docs.asaas.com).
+
+Para voltar ao modo simulado, troque para `GATEWAY_PAGAMENTO=falso` e reinicie.
+
+
 ## API disponível (Etapa 2)
 
 | Método | Rota | O que faz |

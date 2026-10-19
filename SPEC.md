@@ -26,7 +26,7 @@ Permitir que um hóspede de alto padrão **reserve um imóvel de temporada e con
 
 > Cada conta tem **um único perfil**, escolhido no cadastro. Quem é anfitrião e também quer viajar cria uma segunda conta (limitação aceita no MVP).
 
-**Perfil Administrador:** fora do MVP. Disputas e estornos manuais são feitos pelo painel do Stripe.
+**Perfil Administrador:** fora do MVP. Disputas e estornos manuais são feitos pelo painel do Asaas.
 
 ---
 
@@ -35,7 +35,7 @@ Permitir que um hóspede de alto padrão **reserve um imóvel de temporada e con
 ### ÉPICO 1 — Contas e Acesso
 - **H1.1** Como visitante, quero me cadastrar escolhendo meu perfil, para usar a plataforma.
 - **H1.2** Como usuário, quero entrar e sair com e-mail e senha, e continuar logado ao reabrir o navegador.
-- **H1.3** Como anfitrião ou prestador, quero conectar minha conta de recebimento (Stripe), para receber meus repasses.
+- **H1.3** Como anfitrião ou prestador, quero cadastrar minha conta de recebimento (subconta Asaas), para receber meus repasses.
 
 ### ÉPICO 2 — Imóveis (Anfitrião)
 - **H2.1** Como anfitrião, quero cadastrar um imóvel com título, descrição, tipo, endereço, diária, capacidade e quartos.
@@ -80,13 +80,13 @@ Permitir que um hóspede de alto padrão **reserve um imóvel de temporada e con
 | RN04 | Um imóvel não pode ter duas reservas **ativas** (`pendente` dentro do prazo ou `confirmada`) com períodos que se sobrepõem. O dia do checkout pode ser o checkin de outra reserva. |
 | RN05 | Um serviço só pode ser acoplado se a **cidade de atuação = cidade do imóvel**, se estiver ativo e se a `data_servico` estiver entre o checkin e o checkout (inclusive). |
 | RN06 | Um prestador não pode ter o mesmo serviço contratado **duas vezes no mesmo dia** em reservas ativas. |
-| RN07 | Reserva `pendente` sem pagamento aprovado em **30 minutos** expira (vira `cancelada`) e libera as datas e os prestadores. |
+| RN07 | Reserva `pendente` sem pagamento aprovado em **30 minutos** expira (vira `cancelada`) e libera as datas e os prestadores. A rotina de 15 min grava o cancelamento e apaga a cobrança em aberto no gateway. |
 | RN08 | Reserva vira `confirmada` **somente** quando o gateway confirma o pagamento via webhook, nunca pela tela de retorno. |
-| RN09 | **Repasse retido até o check-in:** o dinheiro do anfitrião e dos prestadores é transferido 24h após o check-in. Isso protege o hóspede de imóvel diferente do anunciado ou de serviço não prestado. *(✅ aprovada em 2026-10-11)* |
+| RN09 | **Repasse retido até o check-in:** o dinheiro do anfitrião e dos prestadores é transferido 24h após o check-in (check-in considerado às 15h de Brasília). Isso protege o hóspede de imóvel diferente do anunciado ou de serviço não prestado. Com o Asaas: transferência para o `walletId` da subconta de cada recebedor, uma vez só, com até 5 tentativas. A taxa do Asaas sai da comissão da plataforma. *(✅ aprovada em 2026-10-11; Asaas em 2026-10-19)* |
 | RN10 | **Política de cancelamento do MVP:** até 7 dias antes do check-in, reembolso integral. Com menos de 7 dias, reembolso só dos serviços, se faltarem mais de 48h para a data de cada serviço. A hospedagem não é reembolsada. *(✅ aprovada em 2026-10-11)* |
 | RN11 | Reserva vira `concluida` automaticamente depois da data de checkout. A avaliação só é permitida em reserva `concluida`, pelo próprio hóspede, em até **14 dias** após o checkout. |
 | RN12 | O **endereço completo** do imóvel só aparece para o hóspede com reserva confirmada. Antes disso, aparecem apenas cidade e estado. |
-| RN13 | Imóvel e serviço só aparecem na busca se estiverem `ativo` **e** o dono tiver concluído o cadastro de recebimento no Stripe. Imóvel precisa de pelo menos 1 foto. |
+| RN13 | Imóvel e serviço só aparecem na busca se estiverem `ativo` **e** o dono tiver a subconta Asaas **aprovada**. Imóvel precisa de pelo menos 1 foto. |
 | RN14 | Número de hóspedes da reserva ≤ capacidade (`num_hospedes`) do imóvel. |
 | RN15 | Check-in não pode ser no passado. Período máximo de uma reserva: 30 noites. |
 | RN16 | **Navegação livre, login só na ação.** O visitante vê sem login a vitrine, a busca, a página do imóvel, as fotos e os serviços. O login (tela de destaque `/entrar`) só é pedido ao **reservar/negociar** ou **anunciar um imóvel**. Depois do login ou do cadastro, a pessoa volta exatamente para a ação que estava fazendo. *(definida pelo cliente em 2026-10-11)* |
@@ -317,59 +317,118 @@ Cenário: Busca só com inclusos
   E cada imóvel do resultado traz qtd_inclusos e o card mostra o selo "Com serviços inclusos"
 ```
 
-### FEATURE: Pagamento com Split
+### FEATURE: Pagamento com repasse (Asaas)
 
 ```gherkin
-Cenário: Pagamento aprovado
-  Dado que tenho uma reserva "pendente" de R$ 9.100,00
-  Quando pago com cartão e o Stripe envia o webhook de pagamento aprovado
-  Então o pagamento fica "aprovado" com id_externo do Stripe
-  E a reserva fica "confirmada"
-  E o endereço completo do imóvel passa a aparecer para mim
+Cenário: CPF obrigatório para pagar
+  Dado que tenho uma reserva "pendente" e não informei meu CPF
+  Quando escolho pagar
+  Então recebo erro 422 "Informe seu CPF para pagar"
+  E depois de informar um CPF válido, ele aparece mascarado (***.982.247-**)
 
-Cenário: Pagamento recusado
-  Quando o cartão é recusado
+Cenário: Pagamento com Pix aprovado
+  Dado que tenho uma reserva "pendente" de R$ 9.100,00
+  Quando escolho Pix
+  Então recebo o QR Code e o código copia-e-cola de uma cobrança de R$ 9.100,00 (o valor GRAVADO na reserva)
+  E escolher Pix de novo devolve a mesma cobrança
+  Quando o Asaas envia o webhook PAYMENT_CONFIRMED com o token correto
+  Então o pagamento fica "aprovado", com a taxa do Asaas gravada (value − netValue)
+  E a reserva fica "confirmada" e o endereço completo passa a aparecer para mim (RN12)
+  E a tela do Pix, que consulta a cada 5 segundos, mostra "Pagamento confirmado" sozinha
+
+Cenário: Pagamento com cartão
+  Quando escolho cartão de crédito
+  Então a cobrança Pix anterior é cancelada no Asaas
+  E abro a fatura segura do Asaas (o site não vê os dados do cartão)
+  E ao voltar vejo "Aguardando confirmação" até o webhook confirmar
+
+Cenário: Cartão recusado
+  Quando o Asaas avisa PAYMENT_REPROVED_BY_RISK_ANALYSIS
   Então o pagamento fica "recusado", a reserva continua "pendente"
   E posso tentar outro meio de pagamento até a reserva expirar (30 min)
 
 Cenário: Webhook repetido
-  Dado que o Stripe envia o mesmo evento de pagamento duas vezes
-  Então a reserva é confirmada uma única vez (processamento idempotente)
+  Dado que o Asaas envia o mesmo evento (mesmo id) duas vezes
+  Então a reserva é confirmada uma única vez (o id fica em eventos_gateway)
 
 Cenário: Webhook falso
-  Quando chega um webhook com assinatura inválida
-  Então a API responde 400 e não altera nada
+  Quando chega um webhook sem o cabeçalho asaas-access-token ou com o token errado
+  Então a API responde 401 e não altera nada
 
-Cenário: Pagamento chega depois da expiração
+Cenário: Valor ou reserva divergente
+  Quando o webhook traz um valor diferente do gravado ou o externalReference de outra reserva
+  Então o pagamento não é aprovado, a reserva continua "pendente" e a divergência vai para o log
+
+Cenário: Pagamento chega depois da expiração, com as datas livres
+  Dado que a reserva expirou e ninguém ocupou as datas nem os prestadores
+  Quando o pagamento atrasado é aprovado
+  Então a reserva é reativada como "confirmada"
+
+Cenário: Pagamento chega depois da expiração, com as datas tomadas
   Dado que a reserva expirou e as datas foram reservadas por outro hóspede
   Quando o pagamento atrasado é aprovado
-  Então o valor é reembolsado automaticamente e a reserva continua "cancelada"
+  Então o valor é reembolsado integralmente e a reserva continua "cancelada"
 
-Cenário: Repasse (split)
-  Dado que a reserva de R$ 9.100,00 foi confirmada
-  Quando passam 24h do check-in
-  Então o anfitrião recebe R$ 6.600,00 (7.500 − 12%)
+Cenário: Expiração
+  Dado que uma reserva "pendente" passou dos 30 minutos
+  Quando a rotina de 15 minutos roda
+  Então a reserva fica "cancelada" e a cobrança em aberto é apagada no Asaas
+
+Cenário: Repasse (RN09)
+  Dado que a reserva de R$ 9.100,00 (check-in 20/12) foi confirmada
+  Quando a rotina roda às 14h59 de 21/12
+  Então nada é transferido
+  Quando a rotina roda às 15h de 21/12 (24h depois do check-in)
+  Então o anfitrião recebe R$ 6.600,00 (7.500 − 12%) na subconta dele
   E o mordomo recebe R$ 1.360,00 (1.600 − 15%)
-  E a plataforma fica com R$ 1.140,00 (menos as taxas do Stripe)
+  E a plataforma fica com R$ 1.140,00 (menos a taxa do Asaas)
+  E rodar a rotina de novo não transfere outra vez
+
+Cenário: Repasse que falha
+  Quando a transferência para um recebedor falha no Asaas
+  Então ela fica "falhou" e é tentada de novo na rodada seguinte, até 5 vezes
+
+Cenário: Cadastro de recebimento (RN13)
+  Dado que sou anfitrião sem subconta
+  Então meus imóveis não aparecem na busca e o painel mostra "Cadastre seu recebimento para aparecer na busca"
+  Quando envio CPF/CNPJ, data de nascimento (ou tipo de empresa), celular, renda mensal e endereço
+  Então a subconta é criada no Asaas "em análise" e a apiKey dela fica guardada cifrada
+  Quando o Asaas avisa ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED
+  Então meus imóveis passam a aparecer na busca
 ```
 
 ### FEATURE: Cancelamento
 
 ```gherkin
+Cenário: Prévia do reembolso
+  Dado que tenho uma reserva confirmada
+  Quando clico em "Cancelar reserva"
+  Então vejo ANTES de confirmar quanto vou receber de volta (mesma conta do cancelamento)
+
 Cenário: Cancelamento com mais de 7 dias de antecedência
   Dado que minha reserva confirmada começa daqui a 10 dias
   Quando cancelo
-  Então recebo reembolso integral e a reserva fica "cancelada"
+  Então recebo reembolso integral (hospedagem, inclusos e serviços) pelo Asaas e a reserva fica "cancelada"
   E as datas e os prestadores são liberados
 
 Cenário: Cancelamento em cima da hora
-  Dado que minha reserva começa daqui a 3 dias, com serviço marcado para daqui a 4 dias
+  Dado que minha reserva começa amanhã, com um serviço amanhã e outro daqui a 3 dias
   Quando cancelo
-  Então recebo reembolso apenas do serviço
-  E a hospedagem não é reembolsada
+  Então recebo reembolso apenas do serviço de daqui a 3 dias (mais de 48h)
+  E a hospedagem e os inclusos não são reembolsados (RN10 + RN20)
+  E o anfitrião e o prestador do serviço de amanhã ainda recebem o repasse da parte que ficou
+
+Cenário: Cancelar depois do repasse
+  Dado que o repasse da minha reserva já foi feito
+  Quando tento cancelar
+  Então recebo erro 409 "O valor desta estadia já foi repassado... fale com o suporte"
+
+Cenário: Reembolso que falha no Asaas
+  Quando cancelo e o Asaas recusa o reembolso
+  Então a reserva continua "confirmada" e posso tentar de novo
 
 Cenário: Cancelar reserva de outro hóspede
-  Quando tento cancelar uma reserva que não é minha
+  Quando tento pagar, ver a prévia ou cancelar uma reserva que não é minha
   Então recebo erro 404
 ```
 
@@ -408,13 +467,13 @@ Cenário: Prazo encerrado
 | # | Caso | Tratamento |
 |---|---|---|
 | CB01 | Duas reservas simultâneas no mesmo período | Checagem e insert na mesma `db.transaction` (o SQLite serializa as escritas) → 409 para a segunda |
-| CB02 | Hóspede abandona o pagamento | Expira em 30 min (RN07), checado na consulta de disponibilidade, sem depender de cron |
-| CB03 | Pagamento aprovado depois da expiração | Reembolso automático se as datas já foram tomadas. Se ainda estiverem livres, a reserva é reativada |
-| CB04 | Webhook duplicado, fora de ordem ou falso | Assinatura verificada + `id_externo UNIQUE` + só transições de status válidas |
+| CB02 | Hóspede abandona o pagamento | Expira em 30 min (RN07): a consulta de disponibilidade já ignora a reserva vencida, e a rotina de 15 min a cancela e apaga a cobrança. Carrinho abandonado não aparece nas listas |
+| CB03 | Pagamento aprovado depois da expiração | Reembolso integral automático se as datas ou os prestadores já foram tomados. Se ainda estiverem livres, a reserva é reativada. Se o reembolso falhar no Asaas, o pagamento fica `reembolso_pendente` e a rotina tenta de novo |
+| CB04 | Webhook duplicado, fora de ordem ou falso | Token `asaas-access-token` conferido (401 sem ele) + `eventos_gateway` (id do evento processado uma vez) + valor e `externalReference` conferidos + só transições de status válidas |
 | CB05 | Prestador desativa um serviço já contratado | Reservas existentes são mantidas. O serviço só some de novas buscas |
 | CB06 | Anfitrião desativa imóvel com reservas futuras | Bloqueado → 409 "Imóvel tem reservas futuras" |
 | CB07 | Prestador muda o preço depois da reserva | Sem efeito: o `preco_contratado` está congelado |
-| CB08 | Anfitrião ou prestador sem conta Stripe concluída | Imóvel ou serviço não aparece na busca (RN13) |
+| CB08 | Anfitrião ou prestador sem subconta Asaas aprovada | Imóvel ou serviço não aparece na busca (RN13). O painel mostra a faixa "Cadastre seu recebimento" |
 | CB09 | Taxa de comissão alterada no `.env` | Só vale para novas reservas. As antigas guardam a comissão gravada |
 | CB10 | Arredondamento do split (centavos ímpares) | Repasse arredondado para baixo e a diferença fica com a plataforma. A soma sempre fecha com o total |
 | CB11 | Cidade digitada de formas diferentes ("búzios ", "BÚZIOS") | A API padroniza ao salvar e o frontend oferece uma lista de cidades existentes |
@@ -425,6 +484,10 @@ Cenário: Prazo encerrado
 | CB16 | Anfitrião muda preço ou nome de um incluso já contratado | Sem efeito na reserva: `reserva_inclusos` guarda nome e preço congelados |
 | CB17 | Anfitrião tenta remover incluso já contratado | 409: o histórico precisa dele (FK RESTRICT). Ele pode desativar |
 | CB18 | Anfitrião cria incluso depois que o hóspede salvou o carrinho | O carrinho guarda os inclusos **retirados**: o novo aparece marcado (RN18) |
+| CB19 | Dois cliques em "Gerar Pix" ou troca de Pix para cartão | Uma só cobrança em aberto por reserva (índice único). Repetir o método devolve a mesma; trocar cancela a anterior no Asaas |
+| CB20 | Cobrança paga duas vezes (ex.: Pix pago enquanto a reserva já tinha sido paga) | A segunda é reembolsada integralmente, sem mexer na reserva |
+| CB21 | Repasse falha no Asaas | Linha `falhou` com o motivo; nova tentativa a cada 15 min, até 5. Depois disso, erro no log para resolver pelo painel do Asaas |
+| CB22 | Reembolso do cancelamento falha no Asaas | A reserva volta a `confirmada` (nada muda) e o hóspede vê a mensagem; pode tentar de novo |
 
 ---
 
@@ -433,7 +496,7 @@ Cenário: Prazo encerrado
 | Categoria | Requisito |
 |---|---|
 | Segurança | Senha com bcrypt; cookie `httpOnly`, `sameSite=lax`, `secure` em produção; SQL sempre com parâmetros (`?`), nunca concatenado; checagem de dono em toda rota de edição |
-| Pagamentos | Nenhum dado de cartão passa pelo servidor: o Stripe recolhe o cartão direto no navegador (Stripe Elements/Checkout) |
+| Pagamentos | Nenhum dado de cartão passa pelo servidor: o hóspede paga na fatura hospedada pelo Asaas (`invoiceUrl`). CPF/CNPJ sempre mascarado nas telas (`***.123.456-**`). A apiKey das subcontas fica cifrada (AES-256-GCM) |
 | Desempenho | Busca < 500 ms com 5.000 imóveis (índices já criados na Etapa 1) |
 | Disponibilidade | Backup diário do arquivo SQLite com retenção de 7 dias |
 | Acessibilidade | Navegação por teclado e contraste AA nas telas do fluxo do hóspede |
@@ -445,7 +508,8 @@ Cenário: Prazo encerrado
 
 ## 8. FORA DO ESCOPO DO MVP
 
-- Painel administrativo (moderação, disputas): usar o painel do Stripe
+- Painel administrativo (moderação, disputas): usar o painel do Asaas
+- Cartão parcelado (o MVP aceita só à vista)
 - Notificações por e-mail ou WhatsApp (o MVP mostra a confirmação na tela e em "Minhas reservas")
 - Chat entre hóspede, anfitrião e prestador
 - Bloqueio manual de datas pelo anfitrião e calendário sincronizado (iCal com Airbnb/Booking)
