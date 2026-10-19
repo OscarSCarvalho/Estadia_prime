@@ -46,10 +46,11 @@ function calcularRepasses({ reserva, anfitriaoId, itens = [], inclusos = [] }) {
 }
 
 // Para as telas do anfitrião e do prestador. `repasse`: a linha da tabela repasses deste recebedor
-// (ou null); `aReceber`: quanto ele recebe desta reserva, já sem o que foi reembolsado
+// (ou null); `aReceber`: quanto ele recebe desta reserva, já sem o que foi reembolsado.
+// Reserva sem pagamento (ainda pendente, ou de antes da Etapa 4b) não tem repasse a mostrar
 function situacaoDoRepasse({ reserva, repasse, aReceber }) {
   if (repasse) return repasse.status === 'enviado' ? 'enviado' : 'processando';
-  if (reserva.status === 'pendente' || aReceber <= 0) return null;
+  if (!reserva.foi_paga || aReceber <= 0) return null;
   return 'aguardando_checkin';
 }
 

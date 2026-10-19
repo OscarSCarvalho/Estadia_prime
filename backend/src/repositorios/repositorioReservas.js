@@ -65,6 +65,7 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
     r.valor_total, r.valor_comissao, r.status, r.data_reserva, r.repasse_em, r.hospedagem_reembolsada,
     r.hospede_id, i.anfitriao_id,
     (SELECT COALESCE(SUM(pg.valor_reembolsado), 0) FROM pagamentos pg WHERE pg.reserva_id = r.id) AS valor_reembolsado,
+    ${foiPaga('r')} AS foi_paga,
     i.titulo AS imovel_titulo, i.tipo_imovel AS imovel_tipo, i.cidade AS imovel_cidade, i.estado AS imovel_estado,
     i.endereco AS imovel_endereco,
     (SELECT f.url_foto FROM imovel_fotos f WHERE f.imovel_id = i.id ORDER BY f.ordem, f.id LIMIT 1) AS imovel_foto`;
@@ -121,6 +122,7 @@ function criarRepositorioReservas(db, { exigirRecebimento = true } = {}) {
            rs.preco_contratado * rs.quantidade AS subtotal, rs.valor_comissao, rs.reembolsado,
            s.id AS servico_id, s.tipo_servico, s.unidade_preco,
            r.id AS reserva_id, r.status, r.data_reserva, r.data_checkin, r.data_checkout, r.num_hospedes,
+           ${foiPaga('r')} AS foi_paga,
            i.titulo AS imovel_titulo, i.cidade AS imovel_cidade, i.estado AS imovel_estado, i.endereco AS imovel_endereco,
            h.nome AS hospede_nome, h.telefone AS hospede_telefone
       FROM reserva_servicos rs

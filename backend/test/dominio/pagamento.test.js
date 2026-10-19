@@ -10,7 +10,7 @@ const {
   decidirPagamentoAprovado,
   taxaDoGateway,
 } = require('../../src/dominio/pagamento');
-const { calcularRepasses, momentoDoRepasse, repasseLiberado } = require('../../src/dominio/repasse');
+const { calcularRepasses, momentoDoRepasse, repasseLiberado, situacaoDoRepasse } = require('../../src/dominio/repasse');
 const { calcularReserva } = require('../../src/dominio/precificacao');
 const { ErroDadosInvalidos, ErroReservaNaoPagavel } = require('../../src/dominio/erros');
 
@@ -192,5 +192,14 @@ describe('repasses (RN09)', () => {
     assert.equal(momentoDoRepasse('2099-12-20').toISOString(), '2099-12-21T18:00:00.000Z');
     assert.equal(repasseLiberado({ data_checkin: '2099-12-20' }, new Date('2099-12-21T17:59:59Z')), false);
     assert.equal(repasseLiberado({ data_checkin: '2099-12-20' }, new Date('2099-12-21T18:00:00Z')), true);
+  });
+
+  test('situação mostrada ao recebedor: só reserva paga tem repasse', () => {
+    const paga = { foi_paga: 1 };
+    assert.equal(situacaoDoRepasse({ reserva: paga, repasse: null, aReceber: 660000 }), 'aguardando_checkin');
+    assert.equal(situacaoDoRepasse({ reserva: paga, repasse: { status: 'falhou' }, aReceber: 660000 }), 'processando');
+    assert.equal(situacaoDoRepasse({ reserva: paga, repasse: { status: 'enviado' }, aReceber: 660000 }), 'enviado');
+    assert.equal(situacaoDoRepasse({ reserva: paga, repasse: null, aReceber: 0 }), null, 'tudo reembolsado');
+    assert.equal(situacaoDoRepasse({ reserva: { foi_paga: 0 }, repasse: null, aReceber: 660000 }), null, 'sem pagamento');
   });
 });
