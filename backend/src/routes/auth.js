@@ -22,7 +22,7 @@ async function iniciarSessao(req, usuario) {
   await salvarSessao(req);
 }
 
-function criarRotasAuth({ cadastrarUsuario, autenticarUsuario, obterUsuario, emProducao }) {
+function criarRotasAuth({ cadastrarUsuario, autenticarUsuario, obterUsuario, atualizarDocumento, emProducao }) {
   const rotas = express.Router();
 
   rotas.post('/cadastro', async (req, res) => {
@@ -52,6 +52,11 @@ function criarRotasAuth({ cadastrarUsuario, autenticarUsuario, obterUsuario, emP
       await destruirSessao(req);
       throw new ErroNaoAutenticado();
     }
+  });
+
+  // CPF/CNPJ do próprio usuário (o hóspede precisa dele para pagar). Volta só mascarado
+  rotas.put('/eu/documento', exigirLogin, (req, res) => {
+    res.json({ usuario: atualizarDocumento(req.session.usuario.id, req.body?.cpf_cnpj) });
   });
 
   return rotas;

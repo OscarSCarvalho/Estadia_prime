@@ -11,13 +11,17 @@ const configTeste = {
   custoHashSenha: 4,
   comissaoHospedagemPct: 12,
   comissaoServicoPct: 15,
+  gatewayPagamento: 'falso',
+  asaasWebhookToken: 'token-do-webhook-de-teste',
+  chaveCriptografia: 'ab'.repeat(32),
+  urlPublicaSite: 'http://localhost:5173',
 };
 
 async function iniciarServidorTeste(configExtra = {}) {
   const db = abrirBanco(':memory:');
   const pastaUploads = fs.mkdtempSync(path.join(os.tmpdir(), 'estadia-uploads-'));
   const errosRegistrados = [];
-  const { app, encerrar } = criarApp({
+  const { app, encerrar, gateway, rotinas } = criarApp({
     db,
     config: { ...configTeste, pastaUploads, ...configExtra },
     registrarErro: (e) => errosRegistrados.push(e),
@@ -34,7 +38,8 @@ async function iniciarServidorTeste(configExtra = {}) {
     fs.rmSync(pastaUploads, { recursive: true, force: true });
   }
 
-  return { db, urlBase, pastaUploads, errosRegistrados, fechar };
+  // `gateway`: o gatewayFalso (simula pagamentos e falhas); `rotinas`: passos da rotina de 15 min
+  return { db, urlBase, pastaUploads, errosRegistrados, gateway, rotinas, fechar };
 }
 
 // Simula um navegador: guarda o cookie de sessão entre as requisições
@@ -73,6 +78,15 @@ function criarNavegador(urlBase) {
     post: (caminho, corpo, opcoes) => requisitar('POST', caminho, corpo, opcoes),
     put: (caminho, corpo) => requisitar('PUT', caminho, corpo),
     patch: (caminho, corpo) => requisitar('PATCH', caminho, corpo),
+    // Webhook do gateway: sem cookie, com o token no cabeçalho asaas-access-token (null = sem token)
+    async webhook(corpo, token = 'token-do-webhook-de-teste') {
+      const resposta = await fetch(`${urlBase}/api/webhooks/asaas`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...(token && { 'asaas-access-token': token }) },
+        body: JSON.stringify(corpo),
+      });
+      return { status: resposta.status, corpo: await resposta.json() };
+    },
     delete: (caminho) => requisitar('DELETE', caminho),
     // arquivos: [{ bytes, nome }] no campo 'fotos'
     enviarFotos(caminho, arquivos, campo = 'fotos') {

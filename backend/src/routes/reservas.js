@@ -6,7 +6,15 @@ const { lerId } = require('./parametros');
 const usuarioLogado = (req) => req.session.usuario.id;
 
 // /api/reservas: o hóspede cria e acompanha as próprias reservas
-function criarRotasReservas({ criarReserva, listarMinhasReservas, desistirDaReserva }) {
+function criarRotasReservas({
+  criarReserva,
+  listarMinhasReservas,
+  desistirDaReserva,
+  iniciarPagamento,
+  obterSituacaoPagamento,
+  previaCancelamento,
+  cancelarReserva,
+}) {
   const rotas = express.Router();
   rotas.use(exigirPerfil('hospede'));
 
@@ -18,9 +26,31 @@ function criarRotasReservas({ criarReserva, listarMinhasReservas, desistirDaRese
     res.json({ reservas: listarMinhasReservas(usuarioLogado(req)) });
   });
 
-  rotas.post('/:id/desistir', (req, res) => {
+  rotas.post('/:id/desistir', async (req, res) => {
     const reservaId = lerId(req.params.id, ErroReservaNaoEncontrada);
-    res.json({ reserva: desistirDaReserva(usuarioLogado(req), reservaId) });
+    res.json({ reserva: await desistirDaReserva(usuarioLogado(req), reservaId) });
+  });
+
+  // H6.1: { metodo: 'pix' | 'cartao' } → QR do Pix ou link da fatura do Asaas
+  rotas.post('/:id/pagamento', async (req, res) => {
+    const reservaId = lerId(req.params.id, ErroReservaNaoEncontrada);
+    res.json({ pagamento: await iniciarPagamento(usuarioLogado(req), reservaId, req.body ?? {}) });
+  });
+
+  rotas.get('/:id/pagamento', (req, res) => {
+    const reservaId = lerId(req.params.id, ErroReservaNaoEncontrada);
+    res.json(obterSituacaoPagamento(usuarioLogado(req), reservaId));
+  });
+
+  // H6.3: prévia (quanto volta) e o cancelamento em si, com a mesma conta (RN10 + RN20)
+  rotas.get('/:id/cancelamento', (req, res) => {
+    const reservaId = lerId(req.params.id, ErroReservaNaoEncontrada);
+    res.json(previaCancelamento(usuarioLogado(req), reservaId));
+  });
+
+  rotas.post('/:id/cancelar', async (req, res) => {
+    const reservaId = lerId(req.params.id, ErroReservaNaoEncontrada);
+    res.json(await cancelarReserva(usuarioLogado(req), reservaId));
   });
 
   return rotas;

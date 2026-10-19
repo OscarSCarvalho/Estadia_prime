@@ -8,9 +8,14 @@ const { criarRepositorioBusca } = require('./repositorios/repositorioBusca');
 const { criarRepositorioReservas } = require('./repositorios/repositorioReservas');
 const { criarRepositorioAvaliacoes } = require('./repositorios/repositorioAvaliacoes');
 const { criarRepositorioServicosInclusos } = require('./repositorios/repositorioServicosInclusos');
+const { criarRepositorioPagamentos } = require('./repositorios/repositorioPagamentos');
+const { criarRepositorioRepasses } = require('./repositorios/repositorioRepasses');
 const { criarServicoSenhaBcrypt } = require('./adaptadores/servicoSenhaBcrypt');
 const { criarLimitadorTentativasMemoria } = require('./adaptadores/limitadorTentativasMemoria');
 const { criarArmazenamentoFotosDisco } = require('./adaptadores/armazenamentoFotosDisco');
+const { criarGatewayAsaas } = require('./adaptadores/gatewayAsaas');
+const { criarGatewayFalso } = require('./adaptadores/gatewayFalso');
+const { criarCifraAesGcm } = require('./adaptadores/cifraAesGcm');
 const { criarCadastrarUsuario } = require('./casos_uso/cadastrarUsuario');
 const { criarAutenticarUsuario } = require('./casos_uso/autenticarUsuario');
 const { criarObterUsuario } = require('./casos_uso/obterUsuario');
@@ -21,6 +26,10 @@ const servicosInclusos = require('./casos_uso/servicosInclusos');
 const catalogo = require('./casos_uso/catalogo');
 const reservas = require('./casos_uso/reservas');
 const avaliacoes = require('./casos_uso/avaliacoes');
+const pagamentos = require('./casos_uso/pagamentos');
+const recebimento = require('./casos_uso/recebimento');
+const cancelamento = require('./casos_uso/cancelamento');
+const { criarExecutarRepasses } = require('./casos_uso/repasses');
 const { criarMiddlewareSessao } = require('./middleware/sessao');
 const { cabecalhosSeguranca, semCache } = require('./middleware/seguranca');
 const { criarTratadorErros, rotaNaoEncontrada } = require('./middleware/tratarErros');
@@ -30,10 +39,26 @@ const { criarRotasServicos, criarRotasMeusServicos } = require('./routes/servico
 const { criarRotasCidades } = require('./routes/cidades');
 const { criarRotasReservas, criarRotasReservasRecebidas, criarRotasAgenda } = require('./routes/reservas');
 const { criarRotasAvaliacoes } = require('./routes/avaliacoes');
+const { criarRotasRecebimento } = require('./routes/recebimento');
+const { criarRotasWebhooks, criarRotasDesenvolvimento } = require('./routes/webhooks');
 
-// Raiz de composição: único ponto que conhece as implementações concretas e as injeta nos casos de uso
-function criarApp({ db, config, registrarErro = console.error }) {
-  // RN13: em produção só aparece na busca quem tem recebimento ativo no Stripe
+// CONTEXT §4.4: Asaas em produção (e no teste manual com o sandbox); gateway falso no resto
+function criarGateway(config) {
+  if (config.gatewayPagamento === 'asaas') {
+    return criarGatewayAsaas({
+      urlApi: config.asaasApiUrl,
+      chaveApi: config.asaasApiKey,
+      tokenWebhook: config.asaasWebhookToken,
+      urlWebhook: `${config.urlPublicaSite}/api/webhooks/asaas`,
+    });
+  }
+  return criarGatewayFalso({ tokenWebhook: config.asaasWebhookToken || undefined });
+}
+
+// Raiz de composição: único ponto que conhece as implementações concretas e as injeta nos casos de uso.
+// `gateway` pode ser injetado (testes); senão vem da config
+function criarApp({ db, config, registrarErro = console.error, gateway = criarGateway(config) }) {
+  // RN13: em produção só aparece na busca quem tem a subconta Asaas aprovada
   const visibilidade = { exigirRecebimento: !config.permitirSemRecebimento };
 
   const repositorioUsuarios = criarRepositorioUsuarios(db);
@@ -44,12 +69,31 @@ function criarApp({ db, config, registrarErro = console.error }) {
   const repositorioReservas = criarRepositorioReservas(db, visibilidade);
   const repositorioAvaliacoes = criarRepositorioAvaliacoes(db);
   const repositorioServicosInclusos = criarRepositorioServicosInclusos(db);
+  const repositorioPagamentos = criarRepositorioPagamentos(db);
+  const repositorioRepasses = criarRepositorioRepasses(db);
   // CB09: a comissão vale para novas reservas; as antigas guardam o valor gravado
   const comissoes = { comissaoHospedagemPct: config.comissaoHospedagemPct, comissaoServicoPct: config.comissaoServicoPct };
   const servicoSenha = criarServicoSenhaBcrypt({ custo: config.custoHashSenha });
   const limitadorTentativas = criarLimitadorTentativasMemoria();
   const armazenamentoFotos = criarArmazenamentoFotosDisco({ pasta: config.pastaUploads });
   const concluirReservasVencidas = avaliacoes.criarConcluirReservasVencidas({ repositorioReservas });
+  const cifra = criarCifraAesGcm(config.chaveCriptografia);
+
+  // Etapa 4b: peças de pagamento usadas por mais de um caso de uso
+  const cancelarCobrancaAberta = pagamentos.criarCancelarCobrancaAberta({ repositorioPagamentos, gateway, registrarErro });
+  const reembolsarPagamento = pagamentos.criarReembolsarPagamento({ repositorioPagamentos, gateway, registrarErro });
+  const atualizarSituacaoRecebimento = recebimento.criarAtualizarSituacaoRecebimento({ repositorioUsuarios });
+  const desistirDaReserva = reservas.criarDesistirDaReserva({ repositorioReservas, cancelarCobrancaAberta });
+  const processarEventoPagamento = pagamentos.criarProcessarEventoPagamento({
+    repositorioReservas,
+    repositorioPagamentos,
+    repositorioBusca,
+    gateway,
+    atualizarSituacaoRecebimento,
+    reembolsarPagamento,
+    cancelarCobrancaAberta,
+    registrarErro,
+  });
 
   const casosUso = {
     cadastrarUsuario: criarCadastrarUsuario({ repositorioUsuarios, servicoSenha }),
@@ -86,9 +130,24 @@ function criarApp({ db, config, registrarErro = console.error }) {
 
     criarReserva: reservas.criarCriarReserva({ repositorioReservas, repositorioBusca, ...comissoes }),
     listarMinhasReservas: reservas.criarListarMinhasReservas({ repositorioReservas, repositorioAvaliacoes, concluirReservasVencidas }),
-    listarReservasDoAnfitriao: reservas.criarListarReservasDoAnfitriao({ repositorioReservas, concluirReservasVencidas }),
-    agendaDoPrestador: reservas.criarAgendaDoPrestador({ repositorioReservas, concluirReservasVencidas }),
-    desistirDaReserva: reservas.criarDesistirDaReserva({ repositorioReservas }),
+    listarReservasDoAnfitriao: reservas.criarListarReservasDoAnfitriao({ repositorioReservas, repositorioRepasses, concluirReservasVencidas }),
+    agendaDoPrestador: reservas.criarAgendaDoPrestador({ repositorioReservas, repositorioRepasses, concluirReservasVencidas }),
+    desistirDaReserva,
+
+    atualizarDocumento: recebimento.criarAtualizarDocumento({ repositorioUsuarios }),
+    iniciarCadastroRecebimento: recebimento.criarIniciarCadastroRecebimento({ repositorioUsuarios, gateway, cifra }),
+    obterSituacaoRecebimento: recebimento.criarObterSituacaoRecebimento({ repositorioUsuarios, gateway, cifra, registrarErro }),
+
+    iniciarPagamento: pagamentos.criarIniciarPagamento({
+      repositorioReservas, repositorioPagamentos, repositorioUsuarios, gateway, urlPublicaSite: config.urlPublicaSite, registrarErro,
+    }),
+    obterSituacaoPagamento: pagamentos.criarObterSituacaoPagamento({ repositorioReservas, repositorioPagamentos, gateway }),
+    processarEventoPagamento,
+    simularPagamento: pagamentos.criarSimularPagamento({ repositorioReservas, repositorioPagamentos, gateway, processarEventoPagamento }),
+    previaCancelamento: cancelamento.criarPreviaCancelamento({ repositorioReservas, repositorioPagamentos, repositorioRepasses }),
+    cancelarReserva: cancelamento.criarCancelarReserva({
+      repositorioReservas, repositorioPagamentos, repositorioRepasses, gateway, desistirDaReserva,
+    }),
 
     avaliar: avaliacoes.criarAvaliar({ repositorioReservas, repositorioAvaliacoes, concluirReservasVencidas }),
     listarAvaliacoes: avaliacoes.criarListarAvaliacoes({ repositorioAvaliacoes, repositorioBusca, repositorioServicos }),
@@ -116,6 +175,9 @@ function criarApp({ db, config, registrarErro = console.error }) {
     }),
   );
 
+  // Antes da sessão: quem chama o webhook é o Asaas, não um navegador logado
+  app.use('/api/webhooks', semCache, express.json({ limit: '1mb' }), criarRotasWebhooks({ gateway, processarEventoPagamento }));
+
   app.use('/api', semCache, express.json({ limit: '100kb' }), sessao.middleware);
 
   app.get('/api/saude', (_req, res) => res.json({ ok: true }));
@@ -130,15 +192,45 @@ function criarApp({ db, config, registrarErro = console.error }) {
   app.use('/api/reservas', criarRotasReservas(casosUso));
   app.use('/api/reservas-recebidas', criarRotasReservasRecebidas(casosUso));
   app.use('/api/agenda', criarRotasAgenda(casosUso));
+  app.use('/api/recebimento', criarRotasRecebimento(casosUso));
+  if (gateway.simulado && !config.emProducao) app.use('/api/dev', criarRotasDesenvolvimento(casosUso));
 
   app.use('/api', rotaNaoEncontrada);
   app.use(criarTratadorErros({ registrarErro }));
+
+  // Rotina de 15 min (server.js): RN07 (expira pendentes e apaga a cobrança), CB03 (reembolsos que
+  // falharam) e RN09 (repasses). A trava impede duas execuções ao mesmo tempo; um passo que falha
+  // não impede os outros. Os testes chamam cada passo direto
+  const rotinas = {
+    expirarReservasPendentes: pagamentos.criarExpirarReservasPendentes({ repositorioReservas, cancelarCobrancaAberta }),
+    reembolsarPendentes: pagamentos.criarReembolsarPendentes({ repositorioPagamentos, reembolsarPagamento }),
+    executarRepasses: criarExecutarRepasses({ repositorioReservas, repositorioRepasses, gateway, registrarErro }),
+  };
+  let rotinaRodando = false;
+  async function executarRotinaPagamentos() {
+    if (rotinaRodando) return null;
+    rotinaRodando = true;
+    const resumo = {};
+    try {
+      for (const [nome, passo] of Object.entries(rotinas)) {
+        try {
+          resumo[nome] = await passo();
+        } catch (erro) {
+          registrarErro(erro);
+          resumo[nome] = { erro: erro.message };
+        }
+      }
+      return resumo;
+    } finally {
+      rotinaRodando = false;
+    }
+  }
 
   function encerrar() {
     sessao.armazem.encerrar();
   }
 
-  return { app, encerrar };
+  return { app, encerrar, gateway, rotinas, executarRotinaPagamentos };
 }
 
 module.exports = { criarApp };
