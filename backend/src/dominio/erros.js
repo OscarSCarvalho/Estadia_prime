@@ -213,6 +213,64 @@ class ErroAvaliacaoRepetida extends ErroDominio {
   }
 }
 
+// Etapa 4b — pagamento (Asaas), recebimento e cancelamento
+// Falha de comunicação ou recusa do gateway, sempre com mensagem que dá para mostrar ao usuário
+class ErroGateway extends ErroDominio {
+  constructor(mensagem = 'O serviço de pagamento não respondeu. Tente novamente em instantes') {
+    super('GATEWAY_PAGAMENTO', mensagem);
+  }
+}
+
+class ErroDocumentoObrigatorio extends ErroDominio {
+  constructor() {
+    super('DOCUMENTO_OBRIGATORIO', 'Informe seu CPF para pagar. Ele é exigido pelo Asaas na emissão da cobrança');
+  }
+}
+
+// O CPF já foi enviado ao Asaas (cliente ou subconta criados): trocar exige o suporte
+class ErroDocumentoNaoAlteravel extends ErroDominio {
+  constructor() {
+    super('DOCUMENTO_NAO_ALTERAVEL', 'Seu CPF/CNPJ já está vinculado a pagamentos. Para trocar, fale com o suporte');
+  }
+}
+
+class ErroReservaNaoPagavel extends ErroDominio {
+  constructor(mensagem) {
+    super('RESERVA_NAO_PAGAVEL', mensagem);
+  }
+}
+
+class ErroReservaNaoCancelavel extends ErroDominio {
+  constructor(mensagem = 'Só é possível cancelar reservas confirmadas') {
+    super('RESERVA_NAO_CANCELAVEL', mensagem);
+  }
+}
+
+// RN09: depois do repasse o dinheiro já está com o anfitrião e os prestadores
+class ErroRepasseJaRealizado extends ErroDominio {
+  constructor() {
+    super('REPASSE_JA_REALIZADO', 'O valor desta estadia já foi repassado ao anfitrião e aos prestadores. Para cancelar, fale com o suporte');
+  }
+}
+
+class ErroRecebimentoJaCadastrado extends ErroDominio {
+  constructor() {
+    super('RECEBIMENTO_JA_CADASTRADO', 'Seu cadastro de recebimento já foi enviado');
+  }
+}
+
+class ErroWebhookNaoAutorizado extends ErroDominio {
+  constructor() {
+    super('WEBHOOK_NAO_AUTORIZADO', 'Token do webhook ausente ou inválido');
+  }
+}
+
+class ErroEventoInvalido extends ErroDominio {
+  constructor() {
+    super('EVENTO_INVALIDO', 'Evento sem id ou sem tipo');
+  }
+}
+
 module.exports = {
   ErroDominio,
   ErroDadosInvalidos,
@@ -247,4 +305,13 @@ module.exports = {
   ErroPrazoAvaliacaoEncerrado,
   ErroAlvoForaDaReserva,
   ErroAvaliacaoRepetida,
+  ErroGateway,
+  ErroDocumentoObrigatorio,
+  ErroDocumentoNaoAlteravel,
+  ErroReservaNaoPagavel,
+  ErroReservaNaoCancelavel,
+  ErroRepasseJaRealizado,
+  ErroRecebimentoJaCadastrado,
+  ErroWebhookNaoAutorizado,
+  ErroEventoInvalido,
 };
