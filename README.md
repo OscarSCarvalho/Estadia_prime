@@ -35,7 +35,7 @@ Abra **http://localhost:5173** no navegador.
 | backend | `npm test` | Roda todos os testes automáticos |
 | backend | `npm run lint` | Confere a qualidade do código |
 | backend | `npm run db:testar` | Testa só o banco de dados |
-| backend | `npm run db:demonstracao -- <e-mail do anfitrião>` | Cadastra 12 imóveis (com fotos) e 14 serviços de demonstração no banco de desenvolvimento. Pode rodar de novo: o que já existe é pulado |
+| backend | `npm run db:demonstracao -- <e-mail do anfitrião>` | Cadastra 12 imóveis (com fotos), serviços inclusos do anfitrião em 6 deles e 14 serviços de demonstração no banco de desenvolvimento. Pode rodar de novo: o que já existe é pulado |
 | backend | `npm run db:demonstracao-avaliacoes -- <e-mail do hóspede>` | Só desenvolvimento: hóspedes fictícios avaliam a maioria dos imóveis/serviços de demonstração e a conta informada ganha uma estadia terminada ontem, pronta para avaliar. Rode depois do `db:demonstracao`. Pode rodar de novo |
 | frontend | `npm run lint` | Confere a qualidade do código |
 | frontend | `npm run build` | Gera a versão de produção em `frontend/dist/` |

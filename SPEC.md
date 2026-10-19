@@ -42,6 +42,7 @@ Permitir que um hóspede de alto padrão **reserve um imóvel de temporada e con
 - **H2.2** Como anfitrião, quero enviar e ordenar até 10 fotos do imóvel.
 - **H2.3** Como anfitrião, quero ativar ou desativar um imóvel sem apagá-lo.
 - **H2.4** Como anfitrião, quero ver as reservas dos meus imóveis.
+- **H2.5** Como anfitrião, quero oferecer serviços próprios no imóvel (caseiro, limpeza diária, café da manhã, enxoval, lenha, piscineiro), opcionais para o hóspede. *(incluída em 2026-10-19)*
 
 ### ÉPICO 3 — Serviços Premium (Prestador)
 - **H3.1** Como prestador, quero cadastrar um serviço (tipo, descrição, preço, unidade de preço e cidade de atuação).
@@ -55,7 +56,8 @@ Permitir que um hóspede de alto padrão **reserve um imóvel de temporada e con
 ### ÉPICO 5 — Página do Imóvel e Carrinho (Core)
 - **H5.1** Como hóspede, quero ver fotos, detalhes, nota média e os **serviços premium disponíveis na cidade do imóvel**.
 - **H5.2** Como hóspede, quero adicionar serviços ao carrinho escolhendo o dia e a quantidade de cada um.
-- **H5.3** Como hóspede, quero ver o total separado em hospedagem e serviços antes de pagar.
+- **H5.3** Como hóspede, quero ver o total separado em hospedagem, serviços inclusos e serviços premium antes de pagar.
+- **H5.4** Como hóspede, quero receber os serviços inclusos do anfitrião já marcados no carrinho e poder retirar os que não quiser.
 
 ### ÉPICO 6 — Pagamento com Split (Core)
 - **H6.1** Como hóspede, quero pagar tudo de uma vez (cartão de crédito ou Pix).
@@ -88,6 +90,11 @@ Permitir que um hóspede de alto padrão **reserve um imóvel de temporada e con
 | RN14 | Número de hóspedes da reserva ≤ capacidade (`num_hospedes`) do imóvel. |
 | RN15 | Check-in não pode ser no passado. Período máximo de uma reserva: 30 noites. |
 | RN16 | **Navegação livre, login só na ação.** O visitante vê sem login a vitrine, a busca, a página do imóvel, as fotos e os serviços. O login (tela de destaque `/entrar`) só é pedido ao **reservar/negociar** ou **anunciar um imóvel**. Depois do login ou do cadastro, a pessoa volta exatamente para a ação que estava fazendo. *(definida pelo cliente em 2026-10-11)* |
+| RN17 | **Serviços inclusos do anfitrião.** Cada imóvel pode ter de 0 a 15 serviços inclusos, cadastrados pelo próprio anfitrião: nome (3–60 caracteres), descrição opcional (até 300), preço > 0 e unidade de cobrança `estadia` (valor fixo), `noite` (preço × noites) ou `hospede` (preço × nº de hóspedes). O anfitrião pode editar, ativar/desativar, ordenar e remover (remover só se nunca foi contratado; senão, desativa). *(2026-10-19)* |
+| RN18 | No carrinho, todos os inclusos **ativos** vêm marcados e o hóspede pode desmarcar qualquer um. O pedido de reserva envia a lista de ids que o hóspede **manteve** (sem a lista, nenhum incluso entra). O backend recalcula tudo pelo banco e congela nome e preço na reserva (`reserva_inclusos`). *(2026-10-19)* |
+| RN19 | Comissão da plataforma sobre os inclusos = `COMISSAO_HOSPEDAGEM_PCT` (12%), com o arredondamento da RN03 (por linha). O repasse dos inclusos vai para o anfitrião junto com a hospedagem. *(2026-10-19)* |
+| RN20 | No cancelamento (RN10), os inclusos seguem a regra da **hospedagem**: reembolso integral só até 7 dias antes do check-in. *(2026-10-19)* |
+| RN21 | Incluso inativo, de outro imóvel ou inexistente enviado no pedido → erro 422 e nada é gravado. *(2026-10-19)* |
 
 ---
 
@@ -246,6 +253,70 @@ Cenário: Preço manipulado no navegador
   Então a API ignora os valores enviados e recalcula tudo pelo banco
 ```
 
+### FEATURE: Serviços inclusos do anfitrião (RN17–RN21)
+
+```gherkin
+Cenário: Anfitrião cadastra serviço incluso
+  Dado que estou logado como anfitrião, dono da "Villa Vista Mar"
+  Quando cadastro "Caseiro", preço R$ 150,00, cobrança "noite"
+  Então o incluso é criado "ativo", no fim da lista, com preço 15000 centavos
+
+Cenário: Limite de inclusos
+  Dado que o imóvel já tem 15 serviços inclusos
+  Quando cadastro mais um
+  Então recebo erro 400 "Limite de 15 serviços inclusos por imóvel"
+
+Cenário: Incluso de imóvel de outro anfitrião
+  Quando tento listar, cadastrar, editar ou desativar inclusos de um imóvel que não é meu
+  Então recebo erro 404 e nada muda
+
+Cenário: Página do imóvel
+  Dado que a "Villa Vista Mar" tem "Caseiro" e "Lenha" ativos e "Café da manhã" inativo
+  Quando um visitante abre a página do imóvel
+  Então vê o bloco "Serviços inclusos" só com "Caseiro" e "Lenha", na ordem do anfitrião
+  E o texto "Você pode retirar o que não quiser no carrinho"
+
+Cenário: Reserva com todos os inclusos
+  Dado que escolhi a "Villa Vista Mar" (R$ 2.500/noite) de 20/12 a 23/12 para 6 hóspedes
+  E o carrinho trouxe marcados Caseiro (R$ 150/noite), Café da manhã (R$ 80/hóspede) e Lenha (R$ 120/estadia)
+  Quando confirmo o carrinho
+  Então a reserva tem:
+    | valor_hospedagem | 750000 |
+    | valor_inclusos   | 105000 |  # 150 × 3 + 80 × 6 + 120
+    | valor_total      | 855000 |
+  E a comissão dos inclusos é 12% (12600) e o anfitrião recebe 660000 + 92400
+  E nome e preço de cada incluso ficam congelados na reserva
+
+Cenário: Hóspede retira parte dos inclusos
+  Dado que desmarquei o "Café da manhã" no carrinho
+  Quando confirmo
+  Então só Caseiro e Lenha são cobrados (valor_inclusos = 57000)
+
+Cenário: Sem nenhum incluso
+  Quando desmarco todos e confirmo
+  Então a reserva tem valor_inclusos = 0
+
+Cenário: Preço manipulado no navegador
+  Quando o pedido chega com valores de inclusos alterados
+  Então a API ignora e recalcula tudo pelo banco
+
+Cenário: Incluso desativado enquanto o hóspede monta o carrinho
+  Dado que o anfitrião desativou a "Lenha" depois que abri o carrinho
+  Quando confirmo a reserva com a "Lenha" marcada
+  Então recebo erro 422 "Este serviço incluso não está mais disponível" e nada é gravado
+  E o carrinho tira a "Lenha", avisa e mostra o novo total
+
+Cenário: Cancelamento com inclusos
+  Dado que minha reserva com inclusos começa daqui a 3 dias
+  Quando cancelo
+  Então hospedagem e inclusos não são reembolsados (RN20); só os serviços premium a mais de 48h
+
+Cenário: Busca só com inclusos
+  Quando busco com o filtro "Só imóveis com serviços inclusos" (com_inclusos=1)
+  Então só aparecem imóveis com pelo menos 1 incluso ativo
+  E cada imóvel do resultado traz qtd_inclusos e o card mostra o selo "Com serviços inclusos"
+```
+
 ### FEATURE: Pagamento com Split
 
 ```gherkin
@@ -351,6 +422,9 @@ Cenário: Prazo encerrado
 | CB13 | Fuso horário | Todas as datas de estadia em horário de Brasília. Momentos (data_cadastro etc.) em UTC |
 | CB14 | Usuário com reservas tenta excluir a conta | Bloqueado pelo banco (`ON DELETE RESTRICT`). Exclusão de conta fica fora do MVP |
 | CB15 | Upload de arquivo malicioso com extensão .jpg | Validação do tipo real do arquivo (assinatura dos bytes) e nome do arquivo gerado pelo servidor |
+| CB16 | Anfitrião muda preço ou nome de um incluso já contratado | Sem efeito na reserva: `reserva_inclusos` guarda nome e preço congelados |
+| CB17 | Anfitrião tenta remover incluso já contratado | 409: o histórico precisa dele (FK RESTRICT). Ele pode desativar |
+| CB18 | Anfitrião cria incluso depois que o hóspede salvou o carrinho | O carrinho guarda os inclusos **retirados**: o novo aparece marcado (RN18) |
 
 ---
 

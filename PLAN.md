@@ -1,4 +1,4 @@
-| ✅ || ✅ || ✅ || ✅ || ✅ || ✅ || ✅ |# PLAN.md — Estadia Prime
+# PLAN.md — Estadia Prime
 **Planejamento Técnico (tarefas atômicas)**
 **Cliente:** Estadia_ltda | **Projeto:** Estadia Prime
 **Data:** 2026-10-11 | **Fase:** 3 — Planejamento Técnico
@@ -116,6 +116,21 @@
 | T4a.9 | FE | Carrinho `/imoveis/:id/carrinho` (protegido; "Reservar" leva até ele): serviços da cidade com dia (check-in a check-out, dias ocupados do prestador bloqueados) + quantidade (1–10, mesmo serviço no mesmo dia soma), resumo hospedagem/serviços/total, salvo na aba (`services/carrinhoSalvo.js`). Regras em `utils/carrinho.js`. Ligado à API: "Confirmar reserva" cria a reserva pendente; recusas (prestador contratado, serviço desativado, datas tomadas) atualizam o carrinho na hora | H5.2, H5.3, RN05, RN06, RN14, RN15 | ✅ |
 | T4a.10 | FE | "Minhas reservas", "Reservas dos meus imóveis", "Minha agenda" | H2.4, H3.3 | ✅ |
 
+## ETAPA 4c — Serviços inclusos do anfitrião ✅
+
+> **Pedida pelo cliente e concluída em 2026-10-19** (antes da 4b). RN17–RN21 e H2.5/H5.4 no SPEC. O anfitrião oferece de 0 a 15 serviços próprios por imóvel (caseiro, limpeza, café da manhã...), cobrados por estadia, noite ou hóspede; eles vêm marcados no carrinho e o hóspede pode retirar. Comissão de 12% (a da hospedagem) e repasse junto com a hospedagem; no cancelamento seguem a regra da hospedagem. Tipo de imóvel `sitio` (Sítios) acrescentado; `fazenda` voltou a se chamar Fazendas. **Migração 002** recria `imoveis` (único jeito de mudar um CHECK no SQLite): o `database.js` passou a desligar as foreign keys durante as migrações e a conferir `PRAGMA foreign_key_check` antes de cada commit — sem isso o DROP TABLE apagaria as fotos em cascata. Testada também numa cópia do banco real (13 imóveis, 26 fotos, 28 reservas e 43 avaliações preservados). 209 testes backend (27 novos), lint e build ok, telas conferidas por print (computador e celular).
+
+| ID | Camada | Tarefa | Referência | Status |
+|---|---|---|---|---|
+| T4c.1 | INF | Migração `002_servicos_inclusos.sql`: `imovel_servicos_inclusos`, `reserva_inclusos` (nome/preço congelados, `subtotal` conferido por CHECK, FK RESTRICT), `imoveis` recriada com `'sitio'`; `database.js` com FKs desligadas + `foreign_key_check` | RN17, RN18 | ✅ |
+| T4c.2 | DOM | `servicoIncluso.js` (validação, status, quantidade por unidade); `precificacao` com `inclusos` (comissão da hospedagem, repasse do anfitrião, soma fecha no centavo); `cancelamento` RN20; pedido com ids mantidos; filtro `com_inclusos`; 4 erros novos | RN17–RN21 | ✅ |
+| T4c.3 | REP | `repositorioServicosInclusos.js` (listar, ativos, inserir com limite na transação, editar, status, reordenar, remover); `repositorioReservas` grava/lê `reserva_inclusos`; `repositorioBusca` com `@comInclusos` e `qtd_inclusos` | RN17, RN18, RN21 | ✅ |
+| T4c.4 | UC | `casos_uso/servicosInclusos.js` (sempre conferindo o dono → 404); `criarReserva` confere RN18/RN21 na mesma transação; reservas com `inclusos`, `valor_inclusos`, `valor_servicos_premium`; anfitrião com `repasse_anfitriao` | RN18, RN19, RN21 | ✅ |
+| T4c.5 | INT | `/api/meus-imoveis/:id/inclusos` (GET, POST, PUT `/ordem`, PUT/PATCH `/status`/DELETE `/:inclusoId`); `GET /api/imoveis/:id` devolve `inclusos` ativos | RN17 | ✅ |
+| T4c.6 | QA | Unitários (quantidade, precificação com/sem inclusos, arredondamento, RN20, pedido, filtro) + integração (cadastro/edição, 404 de outro anfitrião, reserva com todos/parte/nenhum, preço adulterado, 422, 409 ao remover contratado, `com_inclusos`, migração preserva dados e aceita `sitio`) | SPEC "Serviços inclusos" | ✅ |
+| T4c.7 | OPS | `db:demonstracao` dá 16 inclusos a 6 dos 12 imóveis (pula imóvel que já tem); `db:testar` conta as 10 tabelas | — | ✅ |
+| T4c.8 | FE | Painel "Serviços inclusos" no editar imóvel (adicionar, editar, ativar/desativar, remover, arrastar/setas, sugestões rápidas); selo no card; filtro no diálogo; bloco na página do imóvel; carrinho com checkbox, valor por linha e total em 3 partes, seleção salva e aviso se o incluso for desativado; inclusos em "Minhas reservas" e "Reservas recebidas" | H2.5, H5.3, H5.4 | ✅ |
+
 ## ETAPA 4b — Stripe Connect (Pagamento com Split)
 
 > **Ordem definida pelo cliente em 2026-10-12:** o pagamento é a **última** etapa de desenvolvimento, executada depois da Etapa 5 e antes do deploy (Etapa 6).
@@ -123,7 +138,7 @@
 | ID | Camada | Tarefa | Referência | Status |
 |---|---|---|---|---|
 | T4b.1 | OPS | Conferir taxas vigentes do Stripe BR e Pix na conta do cliente; chaves de teste no `.env` | PROPOSAL §4.3 | ⬜ |
-| T4b.2 | INF | Migração 002: `pagamentos.id_evento_processado`, `reservas.repasse_em`, `reserva_servicos.reembolsado` | CB04, RN09 | ⬜ |
+| T4b.2 | INF | Migração 003 (a 002 virou a dos serviços inclusos, Etapa 4c): `pagamentos.id_evento_processado`, `reservas.repasse_em`, `reserva_servicos.reembolsado` | CB04, RN09 | ⬜ |
 | T4b.3 | ADP | `gatewayStripe.js`: conta Express, link de cadastro, PaymentIntent, transfer, refund, verificação de assinatura do webhook | — | ⬜ |
 | T4b.4 | UC | `iniciarCadastroRecebimento`, `atualizarRecebimento` (webhook `account.updated`) | H1.3, RN13 | ⬜ |
 | T4b.5 | UC | `iniciarPagamento` (cartão/Pix) | H6.1 | ⬜ |
