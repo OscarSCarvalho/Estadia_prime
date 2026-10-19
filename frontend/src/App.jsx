@@ -16,6 +16,7 @@ import MeusServicos from './pages/painel/MeusServicos.jsx';
 import MinhasReservas from './pages/reservas/MinhasReservas.jsx';
 import ReservasRecebidas from './pages/reservas/ReservasRecebidas.jsx';
 import Agenda from './pages/reservas/Agenda.jsx';
+import Pagamento from './pages/reservas/Pagamento.jsx';
 import NaoEncontrada from './pages/NaoEncontrada.jsx';
 
 // Visitante navega livremente (imóveis, fotos, serviços). O login só é pedido
@@ -91,6 +92,14 @@ export default function App() {
           element={
             <RotaProtegida perfil="hospede">
               <MinhasReservas />
+            </RotaProtegida>
+          }
+        />
+        <Route
+          path="reservas/:id/pagamento"
+          element={
+            <RotaProtegida perfil="hospede">
+              <Pagamento />
             </RotaProtegida>
           }
         />

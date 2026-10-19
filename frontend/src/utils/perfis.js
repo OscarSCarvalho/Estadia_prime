@@ -104,6 +104,21 @@ export const UNIDADES_PRECO = [
   { valor: 'evento', rotulo: 'Por evento' },
 ];
 
+// Cadastro de recebimento com CNPJ (companyType do Asaas)
+export const TIPOS_EMPRESA = [
+  { valor: 'mei', rotulo: 'MEI' },
+  { valor: 'limitada', rotulo: 'Limitada (Ltda.)' },
+  { valor: 'individual', rotulo: 'Empresário individual' },
+  { valor: 'associacao', rotulo: 'Associação' },
+];
+
+// RN09: situação do repasse nas telas do anfitrião e do prestador
+export const SITUACAO_REPASSE = {
+  aguardando_checkin: 'Repasse em',
+  processando: 'Repasse em processamento',
+  enviado: 'Repasse enviado',
+};
+
 export const ESTADOS = [
   'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA',
   'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO',

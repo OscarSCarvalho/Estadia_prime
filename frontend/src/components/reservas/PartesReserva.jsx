@@ -2,8 +2,8 @@ import Icone from '../Icone.jsx';
 import ErroCarregamento from '../ErroCarregamento.jsx';
 import EstadoVazio from '../EstadoVazio.jsx';
 import { ListaCarregando } from '../Esqueletos.jsx';
-import { STATUS_RESERVA, ROTULO_TIPO_SERVICO, descreverCobrancaIncluso, descreverQuantidade } from '../../utils/perfis.js';
-import { formatarDataComAno, formatarDiaDaSemana, formatarMoeda } from '../../utils/formatacao.js';
+import { STATUS_RESERVA, ROTULO_TIPO_SERVICO, SITUACAO_REPASSE, descreverCobrancaIncluso, descreverQuantidade } from '../../utils/perfis.js';
+import { formatarDataComAno, formatarDiaDaSemana, formatarDiaHora, formatarMoeda } from '../../utils/formatacao.js';
 
 export function SeloReserva({ status }) {
   const { rotulo, classes } = STATUS_RESERVA[status] ?? STATUS_RESERVA.cancelada;
@@ -69,6 +69,19 @@ export function InclusosReserva({ inclusos }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// RN09: quando o dinheiro chega ao anfitrião ou ao prestador (24h depois do check-in)
+export function SituacaoRepasse({ situacao, previstoPara }) {
+  if (!situacao) return null;
+  const enviado = situacao === 'enviado';
+  return (
+    <p className={`mt-1 inline-flex items-center gap-1.5 text-xs font-medium ${enviado ? 'text-ouro-escuro' : 'text-grafite'}`}>
+      <Icone nome={enviado ? 'confirmado' : 'relogio'} tamanho={14} />
+      {SITUACAO_REPASSE[situacao]}
+      {situacao === 'aguardando_checkin' && ` ${formatarDiaHora(previstoPara)}`}
+    </p>
   );
 }
 

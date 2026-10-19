@@ -26,6 +26,37 @@ export function formatarMoeda(centavos) {
   return formatoMoeda.format(Math.round(centavos / 100));
 }
 
+const formatoMoedaComCentavos = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Pagamento e reembolso: o valor exato, com centavos ("R$ 9.100,00")
+export function formatarMoedaExata(centavos) {
+  return formatoMoedaComCentavos.format(centavos / 100);
+}
+
+// Momento ISO → "21 de dez., 15:00" no horário de Brasília (previsão do repasse)
+export function formatarDiaHora(momentoIso) {
+  return new Date(momentoIso).toLocaleString('pt-BR', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  });
+}
+
+// Digitação do CPF/CNPJ: "52998224725" → "529.982.247-25"; 14 dígitos → "11.222.333/0001-81"
+export function mascararDocumentoDigitado(texto) {
+  const digitos = texto.replace(/\D/g, '').slice(0, 14);
+  if (digitos.length <= 11) {
+    return digitos.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return digitos
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
 export function formatarNota(nota) {
   return nota.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

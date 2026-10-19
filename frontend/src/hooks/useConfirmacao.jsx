@@ -3,15 +3,15 @@ import Janela from '../components/Janela.jsx';
 
 // Pergunta de confirmação no estilo do site, no lugar do window.confirm do navegador.
 // Uso: `const [confirmar, janelaConfirmacao] = useConfirmacao();` + `{janelaConfirmacao}` na tela, e
-// `if (!(await confirmar({ titulo, texto, rotuloConfirmar }))) return;`
+// `if (!(await confirmar({ titulo, texto, rotuloConfirmar, rotuloCancelar? }))) return;`
 export function useConfirmacao() {
   const referencia = useRef(null);
   const botaoCancelar = useRef(null);
   const resolver = useRef(null);
-  const [pergunta, setPergunta] = useState({ titulo: '', texto: '', rotuloConfirmar: 'Confirmar' });
+  const [pergunta, setPergunta] = useState({ titulo: '', texto: '', rotuloConfirmar: 'Confirmar', rotuloCancelar: 'Cancelar' });
 
   const confirmar = useCallback((novaPergunta) => {
-    setPergunta(novaPergunta);
+    setPergunta({ rotuloCancelar: 'Cancelar', ...novaPergunta });
     referencia.current.showModal();
     // O foco começa em "Cancelar": Enter por engano não apaga nada
     botaoCancelar.current.focus();
@@ -27,7 +27,7 @@ export function useConfirmacao() {
   }
 
   const janela = (
-    <Janela referencia={referencia} titulo={pergunta.titulo} rotuloFechar="Cancelar" largura="max-w-md" aoFechar={() => responder(false)}>
+    <Janela referencia={referencia} titulo={pergunta.titulo} rotuloFechar={pergunta.rotuloCancelar} largura="max-w-md" aoFechar={() => responder(false)}>
       <div className="px-6 py-6">
         <p className="text-grafite">{pergunta.texto}</p>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -37,7 +37,7 @@ export function useConfirmacao() {
             onClick={() => responder(false)}
             className="rounded-full border border-borda px-5 py-2.5 text-sm font-medium hover:border-tinta"
           >
-            Cancelar
+            {pergunta.rotuloCancelar}
           </button>
           <button
             type="button"

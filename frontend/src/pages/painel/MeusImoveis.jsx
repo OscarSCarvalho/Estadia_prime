@@ -5,6 +5,7 @@ import { ListaCarregando } from '../../components/Esqueletos.jsx';
 import Icone from '../../components/Icone.jsx';
 import Avaliacao from '../../components/explorar/Avaliacao.jsx';
 import SeloStatus from '../../components/painel/SeloStatus.jsx';
+import FaixaRecebimento from '../../components/painel/FaixaRecebimento.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { listarMeusImoveis } from '../../services/painel.js';
@@ -96,6 +97,7 @@ export default function MeusImoveis() {
           <Icone nome="mais" tamanho={18} /> Cadastrar imóvel
         </Link>
       </div>
+      <FaixaRecebimento oQueAparece="seus imóveis" />
 
       <div className="mt-10">
         {carregando ? (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link } from 'react-router';
 import Icone from '../../components/Icone.jsx';
 import AvaliarEstadia from '../../components/avaliacoes/AvaliarEstadia.jsx';
 import {
@@ -15,7 +15,8 @@ import { useConfirmacao } from '../../hooks/useConfirmacao.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { desistirDaReserva, listarMinhasReservas } from '../../services/reservas.js';
-import { formatarHora, formatarMoeda } from '../../utils/formatacao.js';
+import { cancelarReserva, previaCancelamento } from '../../services/pagamentos.js';
+import { formatarHora, formatarMoeda, formatarMoedaExata } from '../../utils/formatacao.js';
 
 function AcoesPendente({ reserva, aoMudar }) {
   const [enviando, setEnviando] = useState(false);
@@ -45,14 +46,12 @@ function AcoesPendente({ reserva, aoMudar }) {
         Datas e serviços guardados até <strong>{formatarHora(reserva.prazo_pagamento)}</strong>. Depois disso, a reserva expira.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled
-          title="O pagamento online (cartão ou Pix) será ativado em breve"
-          className="cursor-not-allowed rounded-full bg-tinta/40 px-5 py-2.5 text-sm font-medium text-marfim"
+        <Link
+          to={`/reservas/${reserva.id}/pagamento`}
+          className="rounded-full bg-tinta px-5 py-2.5 text-sm font-medium text-marfim hover:bg-grafite"
         >
-          Pagar · em breve
-        </button>
+          Pagar agora
+        </Link>
         <button
           type="button"
           onClick={desistir}
@@ -72,10 +71,78 @@ function AcoesPendente({ reserva, aoMudar }) {
   );
 }
 
-function CartaoReserva({ reserva, destacada, aoMudar }) {
-  const { imovel } = reserva;
+// Texto da confirmação com o valor que volta, calculado no backend pela mesma conta do cancelamento (RN10 + RN20)
+function explicarReembolso(reembolso) {
+  if (reembolso.valor_total === 0) {
+    return 'Faltam menos de 7 dias para o check-in: pela política de cancelamento, nenhum valor será devolvido.';
+  }
+  if (reembolso.integral) {
+    return `Você recebe de volta o valor integral: ${formatarMoedaExata(reembolso.valor_total)}.`;
+  }
+  return `Faltam menos de 7 dias para o check-in: a hospedagem e os serviços inclusos não são devolvidos. Você recebe de volta ${formatarMoedaExata(reembolso.valor_total)} dos serviços premium marcados para daqui a mais de 48 horas.`;
+}
+
+// H6.3: mostra ANTES quanto volta e só cancela depois da confirmação
+function AcoesConfirmada({ reserva, aoCancelar }) {
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
+  const [confirmar, janelaConfirmacao] = useConfirmacao();
+
+  async function cancelar() {
+    setEnviando(true);
+    setErro('');
+    try {
+      const previa = await previaCancelamento(reserva.id);
+      if (!previa.pode_cancelar) {
+        setErro(previa.motivo);
+        return;
+      }
+      const confirmado = await confirmar({
+        titulo: 'Cancelar a reserva?',
+        texto: `${explicarReembolso(previa.reembolso)} As datas e os serviços ficam livres para outras pessoas. Essa ação não pode ser desfeita.`,
+        rotuloConfirmar: 'Cancelar reserva',
+        rotuloCancelar: 'Manter reserva',
+      });
+      if (!confirmado) return;
+      const { reserva: cancelada, reembolso } = await cancelarReserva(reserva.id);
+      aoCancelar(
+        cancelada,
+        reembolso.valor_total > 0
+          ? `Reserva cancelada. O reembolso de ${formatarMoedaExata(reembolso.valor_total)} foi pedido ao Asaas e volta pelo mesmo meio de pagamento.`
+          : 'Reserva cancelada.',
+      );
+    } catch (falha) {
+      setErro(falha.message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
-    <li className={`rounded-2xl border bg-white p-4 sm:p-6 ${destacada ? 'border-ouro ring-1 ring-ouro' : 'border-linha'}`}>
+    <div className="mt-4 border-t border-linha pt-4">
+      <button
+        type="button"
+        onClick={cancelar}
+        disabled={enviando}
+        className="rounded-full border border-linha px-5 py-2.5 text-sm font-medium hover:border-erro hover:text-erro disabled:cursor-wait disabled:opacity-60"
+      >
+        {enviando ? 'Calculando…' : 'Cancelar reserva'}
+      </button>
+      {erro && (
+        <p role="alert" className="mt-2 text-sm text-erro">
+          {erro}
+        </p>
+      )}
+      {janelaConfirmacao}
+    </div>
+  );
+}
+
+function CartaoReserva({ reserva, aoMudar }) {
+  const { imovel } = reserva;
+  const [aviso, setAviso] = useState('');
+  return (
+    <li className="rounded-2xl border border-linha bg-white p-4 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row">
         <Link to={`/imoveis/${imovel.id}`} className="shrink-0">
           {imovel.foto ? (
@@ -132,9 +199,29 @@ function CartaoReserva({ reserva, destacada, aoMudar }) {
           <dt>Total</dt>
           <dd>{formatarMoeda(reserva.valor_total)}</dd>
         </div>
+        {reserva.valor_reembolsado > 0 && (
+          <div className="flex justify-between text-ouro-escuro">
+            <dt>Reembolsado</dt>
+            <dd>{formatarMoedaExata(reserva.valor_reembolsado)}</dd>
+          </div>
+        )}
       </dl>
 
       {reserva.status === 'pendente' && <AcoesPendente reserva={reserva} aoMudar={aoMudar} />}
+      {reserva.pode_cancelar && (
+        <AcoesConfirmada
+          reserva={reserva}
+          aoCancelar={(cancelada, mensagem) => {
+            setAviso(mensagem);
+            aoMudar(cancelada);
+          }}
+        />
+      )}
+      {aviso && (
+        <p role="status" className="mt-4 border-t border-linha pt-4 text-sm text-ouro-escuro">
+          {aviso}
+        </p>
+      )}
       <AvaliarEstadia
         reserva={reserva}
         aoAvaliar={(nova) =>
@@ -146,7 +233,6 @@ function CartaoReserva({ reserva, destacada, aoMudar }) {
 }
 
 export default function MinhasReservas() {
-  const reservaCriada = useLocation().state?.reservaCriada;
   useTituloPagina('Minhas reservas');
   const { dados, erro, carregando, recarregar } = useDados('minhas-reservas', listarMinhasReservas);
   // Reservas alteradas nesta tela (desistência) por cima da lista carregada
@@ -156,13 +242,6 @@ export default function MinhasReservas() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <CabecalhoPagina rotulo="Hóspede" titulo="Minhas reservas" />
-
-      {reservaCriada && (
-        <p role="status" className="mt-8 rounded-xl border border-ouro/50 bg-ouro/10 px-4 py-3 text-sm">
-          <strong>Reserva criada!</strong> As datas e os serviços ficam guardados por 30 minutos aguardando o pagamento. O
-          pagamento online (cartão ou Pix) será ativado em breve.
-        </p>
-      )}
 
       <div className="mt-8">
         <ConteudoLista
@@ -183,7 +262,6 @@ export default function MinhasReservas() {
               <CartaoReserva
                 key={reserva.id}
                 reserva={reserva}
-                destacada={reserva.id === reservaCriada}
                 aoMudar={(atualizada) => setAlteradas((atuais) => ({ ...atuais, [atualizada.id]: atualizada }))}
               />
             ))}

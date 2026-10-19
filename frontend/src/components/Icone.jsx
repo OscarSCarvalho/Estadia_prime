@@ -186,6 +186,51 @@ const DESENHOS = {
       <path d="M12 8v4M12 16h.01" />
     </>
   ),
+  // Etapa 4b: pagamento
+  pix: (
+    <>
+      <path d="m12 2.5 4.2 4.2-4.2 4.2-4.2-4.2z" />
+      <path d="m12 13.1 4.2 4.2-4.2 4.2-4.2-4.2z" />
+      <path d="m2.5 12 4.2-4.2 4.2 4.2-4.2 4.2z" />
+      <path d="m13.1 12 4.2-4.2 4.2 4.2-4.2 4.2z" />
+    </>
+  ),
+  cartao: (
+    <>
+      <rect x="2.5" y="5" width="19" height="14" rx="2" />
+      <path d="M2.5 10h19M6.5 15h4" />
+    </>
+  ),
+  copiar: (
+    <>
+      <rect x="8.5" y="8.5" width="12" height="12" rx="2" />
+      <path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" />
+    </>
+  ),
+  cadeado: (
+    <>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+    </>
+  ),
+  confirmado: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m7.5 12.5 3 3 6-6.5" />
+    </>
+  ),
+  relogio: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 7v5l3.5 2" />
+    </>
+  ),
+  carteira: (
+    <>
+      <path d="M19.5 7.5V6a2 2 0 0 0-2-2h-12a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3" />
+      <path d="M21.5 11.5h-5a2 2 0 0 0 0 4h5z" />
+    </>
+  ),
 };
 
 export default function Icone({ nome, tamanho = 24, className = '', preenchido = false, rotulo }) {

@@ -5,6 +5,7 @@ import { ListaCarregando } from '../../components/Esqueletos.jsx';
 import Icone from '../../components/Icone.jsx';
 import Avaliacao from '../../components/explorar/Avaliacao.jsx';
 import FormularioServico from '../../components/painel/FormularioServico.jsx';
+import FaixaRecebimento from '../../components/painel/FaixaRecebimento.jsx';
 import SeloStatus from '../../components/painel/SeloStatus.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { useTituloPagina } from '../../hooks/useTituloPagina.js';
@@ -119,6 +120,7 @@ export default function MeusServicos() {
           </button>
         )}
       </div>
+      <FaixaRecebimento oQueAparece="seus serviços" />
 
       {emEdicao !== null && (
         <section className="mt-8 rounded-2xl border border-linha bg-white p-6 sm:p-8" aria-labelledby="titulo-formulario">

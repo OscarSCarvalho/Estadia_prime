@@ -407,7 +407,7 @@ function Resumo({
         {enviando ? 'Reservando…' : 'Confirmar reserva'}
       </button>
       <p className="mt-3 text-center text-sm text-grafite">
-        Você ainda não será cobrado. As datas e os serviços ficam guardados por 30 minutos até o pagamento.
+        No próximo passo você paga com Pix ou cartão. As datas e os serviços ficam guardados por 30 minutos.
       </p>
     </div>
   );
@@ -510,7 +510,7 @@ function MontagemCarrinho({
         inclusos: mantidos.map((incluso) => incluso.id),
       });
       salvarCarrinho(chave);
-      navegar('/minhas-reservas', { state: { reservaCriada: reserva.id } });
+      navegar(`/reservas/${reserva.id}/pagamento`);
     } catch (erro) {
       tirarDoCarrinho(erro);
       setAviso(avisoDaRecusa(erro, { linkImovel, servicos, inclusos }));

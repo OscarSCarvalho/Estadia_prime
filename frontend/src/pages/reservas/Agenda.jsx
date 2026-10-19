@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import Icone from '../../components/Icone.jsx';
-import { CabecalhoPagina, ConteudoLista, SeloReserva } from '../../components/reservas/PartesReserva.jsx';
+import { CabecalhoPagina, ConteudoLista, SeloReserva, SituacaoRepasse } from '../../components/reservas/PartesReserva.jsx';
 import { useDados } from '../../hooks/useDados.js';
 import { useTituloPagina } from '../../hooks/useTituloPagina.js';
 import { obterAgenda } from '../../services/reservas.js';
@@ -46,6 +46,9 @@ function ItemAgenda({ item }) {
       <dl className="shrink-0 text-sm sm:text-right">
         <dt className="text-grafite">Você recebe</dt>
         <dd className="text-lg font-semibold">{formatarMoeda(item.repasse)}</dd>
+        <dd>
+          <SituacaoRepasse situacao={item.situacao_repasse} previstoPara={item.repasse_previsto_para} />
+        </dd>
       </dl>
     </li>
   );

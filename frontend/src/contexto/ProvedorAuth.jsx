@@ -35,9 +35,12 @@ export function ProvedorAuth({ children }) {
     setUsuario(null);
   }, []);
 
+  // Depois de mudar um dado da conta na API (ex.: o CPF), a tela usa o usuário devolvido por ela
+  const atualizarUsuario = useCallback((usuarioAtualizado) => setUsuario(usuarioAtualizado), []);
+
   const valor = useMemo(
-    () => ({ usuario, carregando, entrar, cadastrar, sair }),
-    [usuario, carregando, entrar, cadastrar, sair],
+    () => ({ usuario, carregando, entrar, cadastrar, sair, atualizarUsuario }),
+    [usuario, carregando, entrar, cadastrar, sair, atualizarUsuario],
   );
 
   return <AuthContexto.Provider value={valor}>{children}</AuthContexto.Provider>;

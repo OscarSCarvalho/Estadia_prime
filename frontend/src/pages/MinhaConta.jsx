@@ -75,6 +75,7 @@ export default function MinhaConta() {
           <Dado rotulo="Nome" valor={usuario.nome} />
           <Dado rotulo="E-mail" valor={usuario.email} />
           <Dado rotulo="Telefone" valor={formatarTelefone(usuario.telefone)} />
+          <Dado rotulo="CPF/CNPJ" valor={usuario.cpf_cnpj ?? 'Não informado'} />
           <Dado rotulo="Perfil" valor={PERFIS[usuario.tipo].titulo} />
           <Dado rotulo="Cliente desde" valor={formatarDataCadastro(usuario.data_cadastro)} />
         </dl>

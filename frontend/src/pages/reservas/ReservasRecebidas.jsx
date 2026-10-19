@@ -6,6 +6,7 @@ import {
   ItensReserva,
   PeriodoReserva,
   SeloReserva,
+  SituacaoRepasse,
   TituloParte,
 } from '../../components/reservas/PartesReserva.jsx';
 import { useDados } from '../../hooks/useDados.js';
@@ -57,7 +58,10 @@ function CartaoReservaRecebida({ reserva }) {
           )}
           <div>
             <dt className="text-grafite">Você recebe</dt>
-            <dd className="text-lg font-semibold">{formatarMoeda(reserva.repasse_anfitriao)}</dd>
+            <dd className="text-lg font-semibold">{formatarMoeda(reserva.repasse?.valor ?? reserva.repasse_anfitriao)}</dd>
+            <dd>
+              <SituacaoRepasse situacao={reserva.repasse?.situacao} previstoPara={reserva.repasse?.previsto_para} />
+            </dd>
           </div>
         </dl>
       </div>
