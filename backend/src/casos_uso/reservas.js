@@ -1,10 +1,11 @@
 // H5.2/H5.3, H2.4 e H3.3: carrinho → reserva pendente, e as listagens de cada perfil.
-// O pagamento que confirma a reserva (RN08) chega na Etapa 4b
+// O pagamento que confirma a reserva (RN08) está em casos_uso/pagamentos.js
 const { calcularReserva } = require('../dominio/precificacao');
 const { validarPedidoReserva, statusExibido, prazoPagamento, exigirTransicao } = require('../dominio/reserva');
 const { dataDentroDaEstadia, hojeEmBrasilia } = require('../dominio/periodo');
 const { situacaoDaAvaliacao, ultimoDiaParaAvaliar } = require('../dominio/avaliacao');
 const { quantidadeDoIncluso } = require('../dominio/servicoIncluso');
+const { calcularRepasses, situacaoDoRepasse, momentoDoRepasse } = require('../dominio/repasse');
 const {
   ErroImovelNaoEncontrado,
   ErroImovelIndisponivel,
@@ -79,6 +80,7 @@ function paraReservaBase(reserva, agora) {
     valor_inclusos: valorInclusos,
     valor_servicos_premium: reserva.valor_servicos - valorInclusos,
     valor_total: reserva.valor_total,
+    valor_reembolsado: reserva.valor_reembolsado,
     imovel: paraImovel(reserva),
     inclusos: reserva.inclusos.map(paraIncluso),
     itens: reserva.itens.map(paraItem),
@@ -90,6 +92,8 @@ function paraReservaDoHospede(reserva, agora, avaliacoesFeitas = []) {
   const situacao = situacaoDaAvaliacao(reserva, hojeEmBrasilia(agora));
   return {
     ...paraReservaBase(reserva, agora),
+    // H6.3: a prévia do reembolso vem de GET /api/reservas/:id/cancelamento
+    pode_cancelar: reserva.status === 'confirmada' && !reserva.repasse_em,
     avaliacao: situacao && {
       situacao,
       ultimo_dia: ultimoDiaParaAvaliar(reserva.data_checkout),
@@ -100,12 +104,27 @@ function paraReservaDoHospede(reserva, agora, avaliacoesFeitas = []) {
 
 // RN19: o anfitrião recebe hospedagem + inclusos, menos as comissões dessas partes. A comissão total
 // gravada inclui a dos serviços premium, que é a soma gravada em cada item (e vai para os prestadores)
-function paraReservaDoAnfitriao(reserva, agora) {
+// RN09: `repasse` mostra quando e quanto o anfitrião recebe (já sem o que foi reembolsado no cancelamento)
+function paraRepasse(reserva, repasse, aReceber) {
+  const situacao = situacaoDoRepasse({ reserva, repasse, aReceber });
+  if (!situacao) return null;
+  return {
+    situacao,
+    valor: repasse?.valor ?? aReceber,
+    previsto_para: momentoDoRepasse(reserva.data_checkin).toISOString(),
+    enviado_em: repasse?.enviado_em ?? null,
+  };
+}
+
+function paraReservaDoAnfitriao(reserva, agora, repasse = null) {
   const comissaoServicosPremium = somar(reserva.itens, 'valor_comissao');
   const valorDoAnfitriao = reserva.valor_hospedagem + somar(reserva.inclusos, 'subtotal');
+  const aReceber = calcularRepasses({ reserva, anfitriaoId: reserva.anfitriao_id, itens: reserva.itens, inclusos: reserva.inclusos })
+    .find((linha) => linha.tipo === 'anfitriao')?.valor ?? 0;
   return {
     ...paraReservaBase(reserva, agora),
     repasse_anfitriao: valorDoAnfitriao - (reserva.valor_comissao - comissaoServicosPremium),
+    repasse: paraRepasse(reserva, repasse, aReceber),
     hospede: {
       nome: reserva.hospede_nome,
       telefone: contatoLiberado(reserva) ? reserva.hospede_telefone : null,
@@ -113,7 +132,8 @@ function paraReservaDoAnfitriao(reserva, agora) {
   };
 }
 
-function paraItemDaAgenda(item, agora) {
+function paraItemDaAgenda(item, agora, repasse = null) {
+  const aReceber = item.reembolsado ? 0 : item.subtotal - item.valor_comissao;
   return {
     id: item.id,
     data_servico: item.data_servico,
@@ -124,6 +144,10 @@ function paraItemDaAgenda(item, agora) {
     preco_contratado: item.preco_contratado,
     subtotal: item.subtotal,
     repasse: item.subtotal - item.valor_comissao,
+    reembolsado: item.reembolsado === 1,
+    // O repasse do prestador é um só por reserva (soma dos itens dele): a situação vem dessa linha
+    situacao_repasse: situacaoDoRepasse({ reserva: item, repasse, aReceber }),
+    repasse_previsto_para: momentoDoRepasse(item.data_checkin).toISOString(),
     reserva: {
       id: item.reserva_id,
       status: statusExibido(item, agora),
@@ -207,37 +231,43 @@ function criarListarMinhasReservas({ repositorioReservas, repositorioAvaliacoes,
   };
 }
 
-function criarListarReservasDoAnfitriao({ repositorioReservas, concluirReservasVencidas, relogio = () => new Date() }) {
+function criarListarReservasDoAnfitriao({ repositorioReservas, repositorioRepasses, concluirReservasVencidas, relogio = () => new Date() }) {
   return function listarReservasDoAnfitriao(anfitriaoId) {
     concluirReservasVencidas();
     const agora = relogio();
-    return repositorioReservas.listarDosImoveisDoAnfitriao(anfitriaoId).map((reserva) => paraReservaDoAnfitriao(reserva, agora));
+    const reservas = repositorioReservas.listarDosImoveisDoAnfitriao(anfitriaoId);
+    const repasses = repositorioRepasses.doUsuarioNasReservas(anfitriaoId, reservas.map((reserva) => reserva.id));
+    return reservas.map((reserva) => paraReservaDoAnfitriao(reserva, agora, repasses.get(reserva.id)));
   };
 }
 
-function criarAgendaDoPrestador({ repositorioReservas, concluirReservasVencidas, relogio = () => new Date() }) {
+function criarAgendaDoPrestador({ repositorioReservas, repositorioRepasses, concluirReservasVencidas, relogio = () => new Date() }) {
   return function agendaDoPrestador(prestadorId) {
     concluirReservasVencidas();
     const agora = relogio();
-    return repositorioReservas.agendaDoPrestador(prestadorId).map((item) => paraItemDaAgenda(item, agora));
+    const itens = repositorioReservas.agendaDoPrestador(prestadorId);
+    const repasses = repositorioRepasses.doUsuarioNasReservas(prestadorId, [...new Set(itens.map((item) => item.reserva_id))]);
+    return itens.map((item) => paraItemDaAgenda(item, agora, repasses.get(item.reserva_id)));
   };
 }
 
-// O hóspede desiste de uma reserva que ainda não pagou: libera as datas na hora, sem esperar os 30 min.
-// Cancelar reserva confirmada envolve reembolso (RN10) e fica para a Etapa 4b
-function criarDesistirDaReserva({ repositorioReservas, relogio = () => new Date() }) {
-  return function desistirDaReserva(hospedeId, reservaId) {
+// O hóspede desiste de uma reserva que ainda não pagou: libera as datas na hora, sem esperar os 30 min,
+// e a cobrança em aberto é apagada no gateway. Cancelar reserva confirmada (com reembolso) é em cancelamento.js
+function criarDesistirDaReserva({ repositorioReservas, cancelarCobrancaAberta = async () => false, relogio = () => new Date() }) {
+  return async function desistirDaReserva(hospedeId, reservaId) {
     const reserva = repositorioReservas.buscarDoHospede(reservaId, hospedeId);
     if (!reserva) throw new ErroReservaNaoEncontrada();
     if (reserva.status !== 'pendente') throw new ErroReservaNaoPendente();
     exigirTransicao(reserva.status, 'cancelada');
     // Se o status mudou entre a leitura e aqui (ex.: pagamento chegou), nada é alterado
     if (!repositorioReservas.alterarStatus(reservaId, 'pendente', 'cancelada')) throw new ErroReservaNaoPendente();
+    await cancelarCobrancaAberta(reservaId);
     return paraReservaDoHospede(repositorioReservas.buscarDoHospede(reservaId, hospedeId), relogio());
   };
 }
 
 module.exports = {
+  paraReservaDoHospede,
   criarCriarReserva,
   criarListarMinhasReservas,
   criarListarReservasDoAnfitriao,

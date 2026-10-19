@@ -2,7 +2,7 @@
 //   - até 7 dias antes do check-in: reembolso integral
 //   - com menos de 7 dias: a hospedagem não volta; cada serviço volta se faltarem mais de 48h para o dia dele
 // RN20: os serviços inclusos do anfitrião seguem a regra da HOSPEDAGEM (só voltam no reembolso integral).
-// O reembolso de verdade (Stripe) é da Etapa 4b; aqui fica só a conta, testável sem gateway.
+// Aqui fica só a conta, testável sem gateway; o reembolso de verdade (Asaas) é em casos_uso/cancelamento.js.
 
 const ANTECEDENCIA_REEMBOLSO_INTEGRAL_DIAS = 7;
 const ANTECEDENCIA_REEMBOLSO_SERVICO_HORAS = 48;

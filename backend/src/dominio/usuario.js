@@ -1,4 +1,5 @@
 const { ErroDadosInvalidos } = require('./erros');
+const { mascararCpfCnpj } = require('./documento');
 
 const PERFIS_USUARIO = Object.freeze(['hospede', 'anfitriao', 'prestador']);
 
@@ -69,6 +70,8 @@ function paraUsuarioPublico(usuario) {
     telefone: usuario.telefone,
     tipo: usuario.tipo,
     data_cadastro: usuario.data_cadastro,
+    // LGPD: o documento completo nunca sai da API, só mascarado (***.123.456-**)
+    cpf_cnpj: mascararCpfCnpj(usuario.cpf_cnpj),
   };
 }
 

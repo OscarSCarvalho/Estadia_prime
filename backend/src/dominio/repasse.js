@@ -45,6 +45,14 @@ function calcularRepasses({ reserva, anfitriaoId, itens = [], inclusos = [] }) {
   return repasses.filter((repasse) => repasse.valor > 0);
 }
 
+// Para as telas do anfitrião e do prestador. `repasse`: a linha da tabela repasses deste recebedor
+// (ou null); `aReceber`: quanto ele recebe desta reserva, já sem o que foi reembolsado
+function situacaoDoRepasse({ reserva, repasse, aReceber }) {
+  if (repasse) return repasse.status === 'enviado' ? 'enviado' : 'processando';
+  if (reserva.status === 'pendente' || aReceber <= 0) return null;
+  return 'aguardando_checkin';
+}
+
 module.exports = {
   HORA_CHECKIN_BRASILIA,
   HORAS_APOS_CHECKIN,
@@ -53,4 +61,5 @@ module.exports = {
   momentoDoRepasse,
   repasseLiberado,
   calcularRepasses,
+  situacaoDoRepasse,
 };
